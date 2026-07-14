@@ -36,6 +36,10 @@ type Config struct {
 	// Basereports 是 basereport 任务配置列表。
 	// P1 阶段在此并行添加 PingConfigs/TCPConfigs/HTTPConfigs/KeywordConfigs/ScriptConfigs。
 	Basereports []BasereportConfig `yaml:"basereports"`
+	Pings       []PingConfig       `yaml:"pings"`
+	TCPs        []TCPConfig        `yaml:"tcps"`
+	UDPs        []UDPConfig        `yaml:"udps"`
+	HTTPs       []HTTPConfig       `yaml:"https"`
 }
 
 // OutputConfig 是单个输出端的配置，type 决定具体实现。
@@ -71,6 +75,22 @@ func (c *Config) GetTaskConfigListByType(typ string) []define.TaskConfig {
 		for i := range c.Basereports {
 			out = append(out, &c.Basereports[i])
 		}
+	case define.ModulePing:
+		for i := range c.Pings {
+			out = append(out, &c.Pings[i])
+		}
+	case define.ModuleTCP:
+		for i := range c.TCPs {
+			out = append(out, &c.TCPs[i])
+		}
+	case define.ModuleUDP:
+		for i := range c.UDPs {
+			out = append(out, &c.UDPs[i])
+		}
+	case define.ModuleHTTP:
+		for i := range c.HTTPs {
+			out = append(out, &c.HTTPs[i])
+		}
 	}
 	return out
 }
@@ -83,6 +103,18 @@ func (c *Config) AllTaskConfigs() []define.TaskConfig {
 	for i := range c.Basereports {
 		out = append(out, &c.Basereports[i])
 	}
+	for i := range c.Pings {
+		out = append(out, &c.Pings[i])
+	}
+	for i := range c.TCPs {
+		out = append(out, &c.TCPs[i])
+	}
+	for i := range c.UDPs {
+		out = append(out, &c.UDPs[i])
+	}
+	for i := range c.HTTPs {
+		out = append(out, &c.HTTPs[i])
+	}
 	return out
 }
 
@@ -92,6 +124,26 @@ func (c *Config) AllTaskConfigs() []define.TaskConfig {
 func (c *Config) Clean() error {
 	for i := range c.Basereports {
 		if err := c.Basereports[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.Pings {
+		if err := c.Pings[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.TCPs {
+		if err := c.TCPs[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.UDPs {
+		if err := c.UDPs[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.HTTPs {
+		if err := c.HTTPs[i].Clean(); err != nil {
 			return err
 		}
 	}

@@ -87,3 +87,59 @@ func TestConfig_GetEventBufferSize(t *testing.T) {
 		}
 	}
 }
+
+func TestConfig_ProbeTaskGrouping(t *testing.T) {
+	c := &Config{
+		Pings: []PingConfig{{BaseTaskParam: BaseTaskParam{TaskID: 1}}},
+		TCPs:  []TCPConfig{{BaseTaskParam: BaseTaskParam{TaskID: 2}}},
+		UDPs:  []UDPConfig{{BaseTaskParam: BaseTaskParam{TaskID: 3}}},
+		HTTPs: []HTTPConfig{{BaseTaskParam: BaseTaskParam{TaskID: 4}}},
+	}
+
+	checks := map[string]int{
+		define.ModulePing: 1,
+		define.ModuleTCP:  1,
+		define.ModuleUDP:  1,
+		define.ModuleHTTP: 1,
+	}
+	for typ, want := range checks {
+		got := c.GetTaskConfigListByType(typ)
+		if len(got) != want {
+			t.Fatalf("%s list len = %d, want %d", typ, len(got), want)
+		}
+	}
+	if all := c.AllTaskConfigs(); len(all) != 4 {
+		t.Fatalf("all task configs len = %d, want 4", len(all))
+	}
+}
+
+func TestProbeConfigs_CleanDefaults(t *testing.T) {
+	c := &Config{
+		Pings: []PingConfig{{BaseTaskParam: BaseTaskParam{Enabled: true}, Target: "127.0.0.1"}},
+		TCPs:  []TCPConfig{{BaseTaskParam: BaseTaskParam{Enabled: true}, Address: "127.0.0.1:22"}},
+		UDPs:  []UDPConfig{{BaseTaskParam: BaseTaskParam{Enabled: true}, Address: "127.0.0.1:9999"}},
+		HTTPs: []HTTPConfig{{BaseTaskParam: BaseTaskParam{Enabled: true}, URL: "https://example.com"}},
+	}
+
+	if err := c.Clean(); err != nil {
+		t.Fatalf("clean: %v", err)
+	}
+
+	ping := c.Pings[0]
+	if ping.GetIdent() != "ping:1" || ping.GetType() != define.ModulePing {
+		t.Fatalf("unexpected ping defaults: ident=%q type=%q", ping.GetIdent(), ping.GetType())
+	}
+	if ping.Count != 2 || ping.PayloadSize != 56 || ping.MaxRTT != time.Second || ping.SendInterval != 500*time.Microsecond || ping.Backend != "icmp" || ping.Privileged {
+		t.Fatalf("unexpected ping fields: %+v", ping)
+	}
+
+	if got := c.TCPs[0].GetIdent(); got != "tcp:1" {
+		t.Fatalf("tcp ident = %q, want tcp:1", got)
+	}
+	if got := c.UDPs[0].GetIdent(); got != "udp:1" {
+		t.Fatalf("udp ident = %q, want udp:1", got)
+	}
+	if got := c.HTTPs[0].GetIdent(); got != "http:1" {
+		t.Fatalf("http ident = %q, want http:1", got)
+	}
+}
