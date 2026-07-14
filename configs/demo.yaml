@@ -1,0 +1,36 @@
+# monitorbeat demo 配置（P0 完整版，含 console + file 双输出）
+#
+# 启动方式：
+#   ./bin/monitorbeat -config configs/demo.yaml
+#
+# 与 minimal.yaml 区别：
+#   - 同时启用 console + file 两个输出端
+#   - file 输出滚动到 /tmp/monitorbeat/events.log，单文件 50MB 后切片
+
+check_interval: 5s
+event_buffer_size: 2048
+admin_addr: "0.0.0.0:56060"
+
+outputs:
+  - type: console
+  - type: file
+    path: /tmp/monitorbeat/events.log
+    max_size_mb: 50
+
+basereports:
+  - task_id: 1
+    enabled: true
+    period: 15s
+    timeout: 5s
+    cpu:
+      info_period: 1s
+    mem:
+      enabled: true
+    disk:
+      enabled: true
+      paths:
+        - "/"
+    load:
+      enabled: true
+    net:
+      enabled: true

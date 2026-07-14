@@ -1,0 +1,36 @@
+# monitorbeat 最小可跑配置（P0 出口标准）
+#
+# 启动方式：
+#   ./bin/monitorbeat -config configs/minimal.yaml
+
+# 调度器轮询任务队列的间隔。
+check_interval: 5s
+
+# 事件 channel 缓冲大小。
+event_buffer_size: 1024
+
+# pprof / healthz HTTP 监听地址；留空不启用 admin server。
+admin_addr: "127.0.0.1:56060"
+
+# 输出端列表（按声明顺序注册）。type 支持：console | file。
+outputs:
+  - type: console
+
+# basereport 任务列表（P0 仅 1 个，采集主机 5 类基础指标）。
+basereports:
+  - task_id: 1
+    enabled: true
+    period: 30s
+    timeout: 5s
+    cpu:
+      info_period: 1s
+    mem:
+      enabled: true
+    disk:
+      enabled: true
+      paths:
+        - "/"
+    load:
+      enabled: true
+    net:
+      enabled: true
