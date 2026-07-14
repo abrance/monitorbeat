@@ -1,0 +1,32 @@
+# Binaries
+monitorbeat
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test artifacts
+*.test
+*.out
+coverage.txt
+coverage.html
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local artifacts
+/tmp/
+dist/
+build/
+bin/
+
+# Go workspace
+go.work
+go.work.sum
