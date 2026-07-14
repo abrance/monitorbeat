@@ -23,6 +23,7 @@ Thumbs.db
 
 # Local artifacts
 /tmp/
+.omo/
 dist/
 build/
 bin/
