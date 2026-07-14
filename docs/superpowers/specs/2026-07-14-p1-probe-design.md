@@ -36,7 +36,8 @@ Out of scope:
 - Keyword/script tasks (P1.2/P1.3).
 - HTTP output (P1.4).
 - Full compatibility with legacy bkmonitorbeat event fields.
-- Raw ICMP sockets requiring elevated privileges.
+- Full legacy bkmonitorbeat ping worker model (batch send queue, five reply workers,
+  DNS all/single mode, custom report batching).
 - Distributed probe orchestration or remote agent behavior.
 
 ## Architecture
@@ -52,7 +53,8 @@ Use a thin shared probe layer plus four task-specific packages.
 
 Each task package owns protocol behavior only:
 
-- `tasks/ping`: invokes system `ping` through `exec.CommandContext`.
+- `tasks/ping`: uses Go ICMP by default through `golang.org/x/net/icmp`, with
+  system `ping` kept as an explicit fallback backend.
 - `tasks/tcp`: uses `net.Dialer.DialContext("tcp", address)`.
 - `tasks/udp`: uses `net.Dialer.DialContext("udp", address)`, writes payload, optionally waits for echo.
 - `tasks/http`: uses `net/http` plus `httptrace` for DNS/connect/TLS/TTFB timing.
@@ -75,7 +77,8 @@ Common fields:
 
 Task fields:
 
-- ping: `target`, `count`, `payload_size`.
+- ping: `target`, `count`, `payload_size`, `max_rtt`, `send_interval`,
+  `backend`, `privileged`.
 - tcp: `address` (`host:port`).
 - udp: `address`, `payload`, `expect_response`.
 - http: `url`, `method`, `headers`, `body`, `expected_status`.
@@ -117,7 +120,8 @@ Payload shape:
 
 Protocol-specific metrics:
 
-- ping: `rtt_ms`, `packet_loss_percent`, `packets_sent`, `packets_received`.
+- ping: `avg_rtt_ms`, `min_rtt_ms`, `max_rtt_ms`, `packet_loss_percent`,
+  `available`, `packets_sent`, `packets_received`.
 - tcp: `connect_ms`.
 - udp: `round_trip_ms`, `bytes_written`, `bytes_read`.
 - http: `status_code`, `dns_ms`, `connect_ms`, `tls_ms`, `ttfb_ms`, `total_ms`, `content_length`.
@@ -129,16 +133,33 @@ in the top-level `error` string, not mixed into metrics.
 
 ### Ping
 
-Use system `ping` instead of raw ICMP. This avoids root/capability requirements
-and keeps P1.1 portable across normal Linux deployments. The task parses command
-output for RTT and packet loss. If `ping` is missing, unit tests skip the e2e path
-but parser tests still run.
+Use Go ICMP as the primary implementation, following the bkmonitor-datalink
+pattern rather than shelling out by default. The default backend is `icmp`, using
+`golang.org/x/net/icmp`, `ipv4`, and `ipv6`. A secondary `command` backend remains
+available for environments where ICMP sockets are not usable.
 
-Linux command form:
+ICMP backend behavior:
 
-```text
-ping -c <count> -W <timeout_seconds> -s <payload_size> <target>
-```
+- `privileged=false` uses `icmp.ListenPacket("udp4", "0.0.0.0")` and
+  `icmp.ListenPacket("udp6", "::")` when possible.
+- `privileged=true` uses `icmp.ListenPacket("ip4:icmp", "0.0.0.0")` and
+  `icmp.ListenPacket("ip6:ipv6-icmp", "::")`.
+- The probe builds ICMP Echo messages directly with `icmp.Message` and
+  `icmp.Echo`, tracks send/receive timestamps, and computes loss plus RTT stats.
+- `count`, `payload_size`, `max_rtt`, and `send_interval` control each run.
+
+Fallback command backend behavior:
+
+- Enabled only when `backend: command` is configured, or if a later implementation
+  explicitly chooses fallback after ICMP backend setup fails.
+- Linux command form: `ping -c <count> -W <timeout_seconds> -s <payload_size> <target>`.
+
+Permission notes:
+
+- `privileged=true` usually requires root, `cap_net_raw`, or a container with
+  `NET_RAW`.
+- `privileged=false` depends on the OS supporting unprivileged ping sockets.
+- Failure to open either socket is emitted as a failed probe event, not a panic.
 
 ### TCP
 
@@ -177,7 +198,9 @@ Unit tests:
 - `tasks/tcp`: local `net.Listen("tcp", "127.0.0.1:0")` success and unreachable address failure.
 - `tasks/udp`: local UDP echo server success; no-response timeout failure.
 - `tasks/http`: `httptest.Server` for status/TTFB; `httptest.NewTLSServer` for TLS timing.
-- `tasks/ping`: parser tests for Linux ping output; e2e localhost test skipped when `ping` binary missing.
+- `tasks/ping`: ICMP message build/parse tests; localhost e2e for unprivileged
+  backend when available; privileged tests skipped unless the process has suitable
+  capability; command backend parser test remains for fallback behavior.
 - `configs`: grouping and defaults for four new task configs.
 
 Smoke test:
@@ -202,7 +225,7 @@ New code should preserve the current public contracts (`define.Task`,
 ## Open Decisions Resolved
 
 - Strategy: clean rewrite, not legacy-compatible port.
-- Ping transport: system `ping`, not raw ICMP.
+- Ping transport: Go ICMP by default, system `ping` only as fallback.
 - Event shape: normalized `{dimensions, metrics, error}`.
 - Scheduling: daemon scheduler, not checker scheduler.
 - Tests: local network servers, no external service dependency for unit tests.
