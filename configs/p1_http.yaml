@@ -1,0 +1,30 @@
+# monitorbeat P1.4 http output demo
+#
+# 跑 daemon：
+#   ./bin/monitorbeat -config configs/p1_http.yaml
+#
+# console 镜像每 5s 一条 basereport_event，http output 同时 POST JSON 到
+# 9999 端口的 sink；sink 不可达时事件落 fallback 文件。
+
+check_interval: 1s
+event_buffer_size: 1024
+admin_addr: ""
+
+outputs:
+  - type: console
+  - type: http
+    url: "http://127.0.0.1:9999/v1/events"
+    timeout: 3s
+    retry_max: 1
+    headers:
+      X-Source: monitorbeat-p14
+    fallback_path: /tmp/p14-fallback.jsonl
+    fallback_max_size: 10
+    fallback_max_backups: 2
+
+basereports:
+  - task_id: 4101
+    enabled: true
+    period: 5s
+    cpu_usage: true
+    mem_usage: true

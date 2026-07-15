@@ -13,6 +13,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -39,6 +41,7 @@ import (
 	_ "github.com/abrance/monitorbeat/tasks/http"
 	_ "github.com/abrance/monitorbeat/tasks/keyword"
 	_ "github.com/abrance/monitorbeat/tasks/ping"
+	_ "github.com/abrance/monitorbeat/tasks/script"
 	_ "github.com/abrance/monitorbeat/tasks/tcp"
 	_ "github.com/abrance/monitorbeat/tasks/udp"
 )
@@ -204,7 +207,40 @@ func buildOutput(oc configs.OutputConfig) (output.Output, error) {
 		return output.NewConsole(), nil
 	case "file":
 		return output.NewFile(""), nil
+	case "http":
+		cfg, err := decodeHTTPOutputConfig(oc.Params)
+		if err != nil {
+			return nil, err
+		}
+		return output.NewHTTPOutput(cfg), nil
 	default:
 		return nil, fmt.Errorf("unknown output type: %s", oc.Type)
 	}
+}
+
+// decodeHTTPOutputConfig converts the inline params map into a typed
+// HTTPOutputConfig, parsing any time.Duration fields (e.g. `timeout: 3s`)
+// from string form, since json round-trip can't decode "3s" into time.Duration.
+func decodeHTTPOutputConfig(params map[string]any) (configs.HTTPOutputConfig, error) {
+	if v, ok := params["timeout"]; ok {
+		if s, ok := v.(string); ok {
+			d, err := time.ParseDuration(s)
+			if err != nil {
+				return configs.HTTPOutputConfig{}, fmt.Errorf("http output: invalid timeout %q: %w", s, err)
+			}
+			params["timeout"] = d
+		}
+	}
+	raw, err := json.Marshal(params)
+	if err != nil {
+		return configs.HTTPOutputConfig{}, fmt.Errorf("http output: marshal cfg: %w", err)
+	}
+	var c configs.HTTPOutputConfig
+	if err := json.Unmarshal(raw, &c); err != nil {
+		return configs.HTTPOutputConfig{}, fmt.Errorf("http output: decode cfg: %w", err)
+	}
+	if err := c.Clean(); err != nil {
+		return configs.HTTPOutputConfig{}, fmt.Errorf("http output: %w", err)
+	}
+	return c, nil
 }

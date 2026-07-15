@@ -189,3 +189,71 @@ func TestConfig_KeywordGrouping(t *testing.T) {
 		t.Fatalf("all task configs len = %d, want 2", len(got))
 	}
 }
+
+func TestScriptConfig_CleanDefaults(t *testing.T) {
+	c := &Config{
+		Scripts: []ScriptConfig{
+			{
+				BaseTaskParam: BaseTaskParam{Enabled: true},
+				Command:       "echo 'demo_total 42'",
+			},
+		},
+	}
+	if err := c.Clean(); err != nil {
+		t.Fatalf("clean: %v", err)
+	}
+	s := c.Scripts[0]
+	if s.GetIdent() != "script:1" {
+		t.Fatalf("ident = %q, want script:1", s.GetIdent())
+	}
+	if s.GetType() != define.ModuleScript {
+		t.Fatalf("type = %q, want %q", s.GetType(), define.ModuleScript)
+	}
+	if s.Format == "" {
+		t.Fatal("format should default")
+	}
+	if s.Timeout <= 0 {
+		t.Fatalf("timeout should default positive, got %d", s.Timeout)
+	}
+}
+
+func TestConfig_ScriptGrouping(t *testing.T) {
+	c := &Config{
+		Scripts: []ScriptConfig{
+			{BaseTaskParam: BaseTaskParam{TaskID: 21}},
+			{BaseTaskParam: BaseTaskParam{TaskID: 22}},
+		},
+	}
+	if got := c.GetTaskConfigListByType(define.ModuleScript); len(got) != 2 {
+		t.Fatalf("script list len = %d, want 2", len(got))
+	}
+	if got := c.AllTaskConfigs(); len(got) != 2 {
+		t.Fatalf("all task configs len = %d, want 2", len(got))
+	}
+}
+
+func TestHTTPOutputConfig_CleanDefaults(t *testing.T) {
+	c := &HTTPOutputConfig{URL: "http://127.0.0.1:9999/v1/events"}
+	if err := c.Clean(); err != nil {
+		t.Fatalf("clean: %v", err)
+	}
+	if c.Timeout <= 0 {
+		t.Fatalf("timeout should default positive, got %v", c.Timeout)
+	}
+	if c.RetryMax < 0 {
+		t.Fatalf("retry_max should be >= 0, got %d", c.RetryMax)
+	}
+	if c.FallbackMaxSize <= 0 {
+		t.Fatalf("fallback_max_size should default positive, got %d", c.FallbackMaxSize)
+	}
+	if c.FallbackMaxBackups < 0 {
+		t.Fatalf("fallback_max_backups should be >= 0, got %d", c.FallbackMaxBackups)
+	}
+}
+
+func TestHTTPOutputConfig_RequiresURL(t *testing.T) {
+	c := &HTTPOutputConfig{}
+	if err := c.Clean(); err == nil {
+		t.Fatal("expected error for empty url")
+	}
+}

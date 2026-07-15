@@ -11,6 +11,7 @@
 package configs
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/abrance/monitorbeat/define"
@@ -41,12 +42,58 @@ type Config struct {
 	UDPs        []UDPConfig        `yaml:"udps"`
 	HTTPs       []HTTPConfig       `yaml:"https"`
 	Keywords    []KeywordConfig    `yaml:"keywords"`
+	Scripts     []ScriptConfig     `yaml:"scripts"`
 }
 
 // OutputConfig 是单个输出端的配置，type 决定具体实现。
 type OutputConfig struct {
 	Type   string         `yaml:"type"`
 	Params map[string]any `yaml:",inline"`
+}
+
+// HTTPOutputConfig configures the http output (P1.4).
+//
+// Fields are read from the inline params of an `outputs:` entry, not from a
+// typed YAML block. The runtime constructs this via json round-trip from the
+// map[string]any, then calls Clean() to fill defaults and validate.
+type HTTPOutputConfig struct {
+	URL                string            `yaml:"url" json:"url"`
+	Timeout            time.Duration     `yaml:"timeout" json:"timeout"`
+	RetryMax           int               `yaml:"retry_max" json:"retry_max"`
+	Headers            map[string]string `yaml:"headers" json:"headers"`
+	Auth               HTTPAuthConfig    `yaml:"auth" json:"auth"`
+	InsecureSkipVerify bool              `yaml:"insecure_skip_verify" json:"insecure_skip_verify"`
+	FallbackPath       string            `yaml:"fallback_path" json:"fallback_path"`
+	FallbackMaxSize    int               `yaml:"fallback_max_size" json:"fallback_max_size"` // MB
+	FallbackMaxBackups int               `yaml:"fallback_max_backups" json:"fallback_max_backups"`
+}
+
+// HTTPAuthConfig configures optional request authentication.
+type HTTPAuthConfig struct {
+	Type   string `yaml:"type" json:"type"` // "bearer" | "basic" | ""
+	Token  string `yaml:"token" json:"token"`
+	User   string `yaml:"user" json:"user"`
+	Passwd string `yaml:"passwd" json:"passwd"`
+}
+
+// Clean fills defaults and validates required fields.
+func (c *HTTPOutputConfig) Clean() error {
+	if c.URL == "" {
+		return fmt.Errorf("http output: url is required")
+	}
+	if c.Timeout <= 0 {
+		c.Timeout = 5 * time.Second
+	}
+	if c.RetryMax < 0 {
+		c.RetryMax = 0
+	}
+	if c.FallbackMaxSize <= 0 {
+		c.FallbackMaxSize = 50
+	}
+	if c.FallbackMaxBackups < 0 {
+		c.FallbackMaxBackups = 0
+	}
+	return nil
 }
 
 // GetCheckInterval 返回调度器轮询间隔，未配置时取默认值。
@@ -96,6 +143,10 @@ func (c *Config) GetTaskConfigListByType(typ string) []define.TaskConfig {
 		for i := range c.Keywords {
 			out = append(out, &c.Keywords[i])
 		}
+	case define.ModuleScript:
+		for i := range c.Scripts {
+			out = append(out, &c.Scripts[i])
+		}
 	}
 	return out
 }
@@ -122,6 +173,9 @@ func (c *Config) AllTaskConfigs() []define.TaskConfig {
 	}
 	for i := range c.Keywords {
 		out = append(out, &c.Keywords[i])
+	}
+	for i := range c.Scripts {
+		out = append(out, &c.Scripts[i])
 	}
 	return out
 }
@@ -157,6 +211,11 @@ func (c *Config) Clean() error {
 	}
 	for i := range c.Keywords {
 		if err := c.Keywords[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.Scripts {
+		if err := c.Scripts[i].Clean(); err != nil {
 			return err
 		}
 	}
