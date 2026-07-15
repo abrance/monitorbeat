@@ -1,0 +1,24 @@
+# monitorbeat P1.3 script task demo 配置
+#
+# 跑 daemon：
+#   ./bin/monitorbeat -config configs/p1_script.yaml
+#
+# console 每 5s 输出一条 script_event，metrics 包含 demo_total=42 和 script 执行耗时 cost_ms。
+
+check_interval: 1s
+event_buffer_size: 1024
+admin_addr: ""
+
+outputs:
+  - type: console
+
+scripts:
+  - task_id: 3001
+    enabled: true
+    period: 5s
+    timeout: 10s
+    format: prometheus
+    command: |
+      echo '# HELP demo_total demo counter'
+      echo '# TYPE demo_total counter'
+      echo 'demo_total{env="local"} 42'
