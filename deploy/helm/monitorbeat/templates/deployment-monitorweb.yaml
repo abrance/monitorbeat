@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "monitorbeat.fullname" . }}-web
+  labels: {{- include "monitorbeat.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.monitorweb.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: web
+      {{- include "monitorbeat.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: web
+        {{- include "monitorbeat.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.monitorweb.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.monitorweb.tolerations }}
+      tolerations: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "monitorbeat.fullname" . }}-web
+      containers:
+        - name: monitorweb
+          image: "{{ .Values.monitorweb.image }}"
+          imagePullPolicy: {{ .Values.monitorweb.pullPolicy }}
+          args:
+            - -config
+            - /etc/monitorweb/config.yaml
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/monitorweb/config.yaml
+              subPath: web.yaml
+              readOnly: true
+          resources: {{ toYaml .Values.monitorweb.resources | nindent 12 }}

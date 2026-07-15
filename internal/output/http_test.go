@@ -301,3 +301,90 @@ func TestHTTPOutput_BearerAuthHeader(t *testing.T) {
 		t.Fatalf("Authorization = %q, want %q", seenAuth, "Bearer secret-token")
 	}
 }
+
+// ---------- format tests ----------
+
+func TestFormatVictoriaMetrics_Basereport(t *testing.T) {
+	ev := define.NewEvent("basereport_event", map[string]any{
+		"metrics":    map[string]float64{"cpu_usage": 12.5, "mem_used": 64.0},
+		"dimensions": map[string]string{"host": "node1", "region": "us-east"},
+	})
+
+	body, ct, err := formatVictoriaMetrics(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ct != "application/streamed; charset=utf-8" {
+		t.Errorf("content-type = %q", ct)
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(body)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 lines, got %d:\n%s", len(lines), body)
+	}
+
+	// map iteration order is random, collect by __name__
+	seen := map[string]float64{}
+	for _, l := range lines {
+		var m vmMetric
+		json.Unmarshal([]byte(l), &m)
+		seen[m.Metric["__name__"]] = m.Values[0]
+		if m.Metric["host"] != "node1" {
+			t.Errorf("host missing in: %+v", m)
+		}
+	}
+	if seen["cpu_usage"] != 12.5 || seen["mem_used"] != 64.0 {
+		t.Errorf("metrics: %v", seen)
+	}
+}
+
+func TestFormatVictoriaMetrics_NoMetrics(t *testing.T) {
+	ev := define.NewEvent("heartbeat_event", map[string]any{
+		"dimensions": map[string]string{"node": "x"},
+	})
+
+	body, _, err := formatVictoriaMetrics(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(body)), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 line, got %d: %s", len(lines), body)
+	}
+	var m vmMetric
+	json.Unmarshal([]byte(lines[0]), &m)
+	if m.Metric["__name__"] != "heartbeat_event" {
+		t.Errorf("__name__ = %q, want heartbeat_event", m.Metric["__name__"])
+	}
+	if m.Values[0] != 1 {
+		t.Errorf("value = %v, want 1", m.Values[0])
+	}
+}
+
+func TestFormatDoris(t *testing.T) {
+	ev := define.NewEvent("processbeat_event", map[string]any{
+		"metrics":    map[string]float64{"cpu_percent": 2.5, "rss_bytes": 2e7},
+		"dimensions": map[string]string{"name": "monitorbeat", "pid": "12345"},
+		"processes":  []map[string]any{{"name": "nginx"}},
+	})
+
+	body, ct, err := formatDoris(ev)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ct != "application/json" {
+		t.Errorf("content-type = %q", ct)
+	}
+
+	var records []map[string]any
+	if err := json.Unmarshal(body, &records); err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected 1 record, got %d", len(records))
+	}
+	r := records[0]
+	if r["__type"] != "processbeat_event" || r["cpu_percent"] != 2.5 || r["name"] != "monitorbeat" {
+		t.Errorf("record: %+v", r)
+	}
+}

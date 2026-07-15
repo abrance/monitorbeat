@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "monitorbeat.fullname" . }}-web
+  labels: {{- include "monitorbeat.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.monitorweb.service.type }}
+  ports:
+    - port: {{ .Values.monitorweb.service.port }}
+      targetPort: http
+      name: http
+  selector:
+    app.kubernetes.io/component: web
+    {{- include "monitorbeat.selectorLabels" . | nindent 4 }}

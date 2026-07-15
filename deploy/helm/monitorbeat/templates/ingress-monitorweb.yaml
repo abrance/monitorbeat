@@ -1,0 +1,32 @@
+{{- if .Values.monitorweb.ingress.enabled }}
+{{- $host := .Values.monitorweb.ingress.host | required "monitorweb.ingress.host is required when ingress enabled" }}
+{{- $tlsSecret := .Values.monitorweb.ingress.tlsSecretName | default (printf "%s-tls" ($host | replace "." "-" | replace "_" "-")) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "monitorbeat.fullname" . }}-web
+  labels: {{- include "monitorbeat.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    {{- with .Values.monitorweb.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: {{ $host }}
+      http:
+        paths:
+          - backend:
+              service:
+                name: {{ include "monitorbeat.fullname" . }}-web
+                port:
+                  number: {{ .Values.monitorweb.service.port }}
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - {{ $host }}
+      secretName: {{ $tlsSecret }}
+{{- end }}

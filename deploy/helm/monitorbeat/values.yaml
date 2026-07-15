@@ -1,0 +1,79 @@
+# Default values for monitorbeat helm chart.
+
+# -- monitorbeat agent (DaemonSet) on each node
+monitorbeat:
+  image: abrance/monitorbeat:latest
+  pullPolicy: IfNotPresent
+  extraArgs: []
+  extraEnv: []
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  nodeSelector: {}
+  tolerations: []
+  # monitorbeat 的输出等 YAML 配置
+  config:
+    check_interval: 5s
+    event_buffer_size: 1024
+    outputs:
+      - type: http
+        url: "http://vmtest-1-victoria-metrics-cluster-vminsert.bkbase-test.svc.cluster.local:8480/insert/0/prometheus/api/v1/import"
+        method: POST
+        format: victoriametrics
+        timeout: 10s
+        retry_max: 3
+    basereports:
+      - task_id: 1
+        enabled: true
+        period: 30s
+        timeout: 5s
+        cpu:
+          info_period: 1s
+        mem:
+          enabled: true
+        disk:
+          enabled: true
+          paths: ["/host"]
+        load:
+          enabled: true
+        net:
+          enabled: true
+
+# -- monitorweb (Deployment) — VictoriaMetrics 查询代理 + 前端
+monitorweb:
+  image: abrance/monitorweb:latest
+  pullPolicy: IfNotPresent
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  nodeSelector: {}
+  tolerations: []
+  config:
+    listen: "0.0.0.0:8080"
+    victoriametrics:
+      url: "http://vmtest-1-victoria-metrics-cluster-vmselect.bkbase-test.svc.cluster.local:8481/select/0/prometheus"
+      timeout: 15s
+    ui_dir: "/usr/local/share/monitorweb/ui"
+
+# -- monitorweb Ingress (Traefik + cert-manager)
+  ingress:
+    enabled: false
+    host: monitorbeat.xiaoyxq.top
+    # tlsSecretName: ""  # 默认由 host 自动生成：host 点转横线 + "-tls"
+    annotations: {}
+
+# -- 命名 override
+nameOverride: ""
+fullnameOverride: ""

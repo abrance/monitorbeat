@@ -1,0 +1,32 @@
+check_interval: 5s
+event_buffer_size: 1024
+admin_addr: "127.0.0.1:56060"
+
+outputs:
+  - type: http
+    url: "http://vmtest-1-victoria-metrics-cluster-vminsert.bkbase-test.svc.cluster.local:8480/insert/0/prometheus/api/v1/import"
+    method: POST
+    format: victoriametrics
+    timeout: 10s
+    retry_max: 3
+    fallback_path: /tmp/web_fallback.jsonl
+    fallback_max_size: 50
+    fallback_max_backups: 3
+
+basereports:
+  - task_id: 1
+    enabled: true
+    period: 30s
+    timeout: 5s
+    cpu:
+      info_period: 1s
+    mem:
+      enabled: true
+    disk:
+      enabled: true
+      paths:
+        - "/"
+    load:
+      enabled: true
+    net:
+      enabled: true

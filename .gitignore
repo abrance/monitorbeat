@@ -31,3 +31,7 @@ bin/
 # Go workspace
 go.work
 go.work.sum
+
+# Web UI build artifacts
+web/ui/node_modules/
+web/ui/dist/

@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1
+# monitorweb 多阶段构建：前端 Vite + Go 后端 → 无发行版运行时
+
+# ---- 阶段 1: 构建前端 UI ----
+FROM node:22-bookworm-slim AS ui
+WORKDIR /build
+COPY web/ui/package*.json ./
+RUN npm ci
+COPY web/ui/ .
+RUN npm run build
+
+# ---- 阶段 2: 编译 Go 二进制 ----
+FROM golang:1.25-bookworm AS go
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+COPY --from=ui /build/dist ./web/ui/dist
+RUN CGO_ENABLED=0 go build -ldflags "-s -w" -o /monitorweb ./cmd/monitorweb
+
+# ---- 阶段 3: 运行时 ----
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=go /monitorweb /monitorweb
+COPY --from=go /build/web/ui/dist /usr/local/share/monitorweb/ui
+COPY --chown=65534:65534 web/configs/web.yaml /etc/monitorweb/config.yaml
+USER 65534
+EXPOSE 8080
+ENTRYPOINT ["/monitorweb", "-config", "/etc/monitorweb/config.yaml"]
+LABEL org.opencontainers.image.source="https://github.com/abrance/monitorbeat"
+LABEL org.opencontainers.image.description="monitorweb - monitorbeat web dashboard"

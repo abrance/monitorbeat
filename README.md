@@ -22,7 +22,7 @@
 
 ## 状态
 
-✅ **P1 三大场景全部完成** — 拨测 (P1.1) + 日志采集 (P1.2) + 脚本采集 (P1.3) 全跑通。
+✅ **P2 Tier 1 全部完成** — exceptionbeat + processbeat + socketsnapshot + selfstats + gather_up_beat + dmesg + metricbeat 全跑通。
 
 当前进度：
 
@@ -32,61 +32,66 @@
 | P1.1 拨测 | ✅ ping / tcp / udp / http 全通过 |
 | P1.2 日志采集 | ✅ keyword raw_log 模式，tail + regex capture |
 | P1.3 脚本采集 | ✅ script 定期执行 shell + prometheus/custom 格式解析 |
-| P1.4 HTTP 输出 | ✅ output.http 端到端跑通：JSON POST + 本地文件兜底 |
+| P1.4 HTTP 输出 | ✅ output.http 端到端跑通 |
+| P2 基础设施 | ✅ heartbeat 心跳 (engine 内置 60s) |
+| P2 采集任务 | ✅ exceptionbeat / processbeat / socketsnapshot / selfstats / gather_up_beat / dmesg / metricbeat |
 
-P1.4 模块详情：
+已实现 task 列表 (14/27)：
 
-| 模块 | 状态 |
-|---|---|
-| `configs/config.go` HTTPOutputConfig + HTTPAuthConfig + Clean() | 已实现，测试通过 |
-| `internal/output/http.go` HTTPOutput (Publish / tryPost / writeFallback / rotateFallback) | 已实现，11 个测试全绿 |
-| `cmd/monitorbeat/main.go` case "http" wiring + decodeHTTPOutputConfig | 已实现 |
-| runtime wiring + demo | `configs/p1_http.yaml` 端到端冒烟通过：成功路径（python sink 收 3 POST） + 失败路径（9999 关闭 → `/tmp/p14-fallback.jsonl` 写入 3 行 JSONL） |
-
-P1.2 模块详情：
-
-| 模块 | 状态 |
-|---|---|
-| `configs/keyword.go` KeywordConfig | 已实现，测试通过 |
-| `tasks/keyword/raw_event.go` 事件构造 | 已实现，测试通过 |
-| `internal/regexp/extract` capture 提取 | 已实现，测试通过 |
-| `internal/input/file` tail harvester | 已实现，测试通过 |
-| `scheduler/keyword` 长驻调度器 | 已实现，测试通过 |
-| `tasks/keyword/keyword.go` Gather + builder | 已实现，测试通过 |
-| runtime wiring + demo | `cmd/monitorbeat/main.go` keyword scheduler dispatch 就绪，`configs/p1_keyword.yaml` 端到端冒烟通过（5 条 raw_log 事件） |
-
-P1.3 模块详情：
-
-| 模块 | 状态 |
-|---|---|
-| `configs/script.go` ScriptConfig | 已实现，测试通过 |
-| `internal/script/exec` runner | 已实现，测试通过 |
-| `internal/script/parse` parser (prometheus + custom) | 已实现，测试通过 |
-| `tasks/script/script.go` Gather + builder | 已实现，测试通过 |
-| runtime wiring + demo | `cmd/monitorbeat/main.go` 注册就绪，`configs/p1_script.yaml` 端到端冒烟通过（2 条 script_event） |
-
-## 构建
-
-本机 Go 工具链安装在 `/opt/go/1.25.12/bin/go`（官方 `go1.25.12`，已通过 `sha256sum` 校验）。仓库默认命令：
-
-```bash
-/opt/go/1.25.12/bin/go build ./...
-/opt/go/1.25.12/bin/go test ./...
-```
-
-旧路径 `/opt/go/1.24.6/bin/go` 已经不再使用，文档不再保留该别名。
+| # | Task | Status |
+|---|------|--------|
+| 1 | basereport | ✅ |
+| 2 | ping | ✅ |
+| 3 | tcp | ✅ |
+| 4 | udp | ✅ |
+| 5 | http | ✅ |
+| 6 | keyword | ✅ |
+| 7 | script | ✅ |
+| 8 | exceptionbeat | ✅ (corefile + oom + diskro + diskspace) |
+| 9 | processbeat | ✅ (CPU/Mem/RSS/VMS/FD/Threads) |
+| 10 | socketsnapshot | ✅ (TCP/UDP 连接快照) |
+| 11 | selfstats | ✅ (Go runtime 指标) |
+| 12 | gather_up_beat | ✅ (uptime + task_id) |
+| 13 | dmesg | ✅ (14 种内核异常模式) |
+| 14 | metricbeat | ✅ (轻量 prometheus pull)
 
 当前验证快照：
 
-- `go build ./...`：通过
+- `go build ./...`：通过 (24 packages)
 - `go vet ./...`：clean
-- `go test ./...`：全部通过（17 个包通过，0 失败）
-- `go test -race ./internal/output/... ./configs/... -run HTTP`：通过
-- `gofmt -l tasks/script configs internal/script cmd/monitorbeat internal/output`：clean
-- P1.1 端到端冒烟：`configs/p1_probe.yaml` + 本地 `nc` / `python3 -m http.server`，`monitorbeat -check` 返回 `config OK`，console 打印 `ping_event` / `tcp_event` / `udp_event` / `http_event` 四类事件
-- P1.2 端到端冒烟：`configs/p1_keyword.yaml` tail `/tmp/demo.log`，regex `ERROR payment_id=(\d+) amount=(\d+\.\d+)`，5 条 `raw_log` 事件全部命中，fields 包含 `payment_id` / `amount`
-- P1.3 端到端冒烟：`configs/p1_script.yaml` echo prometheus 指标，3 条 `script_event` 命中（5s period × 12s），metrics 包含 `demo_total=42` + `cost_ms`，dimensions 包含 `command` + `env` + `task_id`
-- P1.4 端到端冒烟：`configs/p1_http.yaml` 成功路径（python HTTP sink 200）收 3 POST，header `Content-Type: application/json; charset=utf-8` + 自定义 `X-Source: monitorbeat-p14`；失败路径（9999 关闭）→ `/tmp/p14-fallback.jsonl` 写入 3 行合法 JSONL
+- `go test ./...`：全部通过 (24 packages, 0 失败)
+- `gofmt -l .`：clean
+- `make build`：`bin/monitorbeat` 产出正常
+- Docker: `Dockerfile` 就绪，多阶段构建 alpine ~20MB
+
+P2 Demo 配置：
+
+```bash
+# exceptionbeat (磁盘 + OOM 检测)
+./bin/monitorbeat -config configs/p2_exceptionbeat.yaml
+# processbeat (进程性能快照)
+./bin/monitorbeat -config configs/p2_processbeat.yaml
+# socketsnapshot (连接快照)
+./bin/monitorbeat -config configs/p2_socketsnapshot.yaml
+# selfstats (自监控)
+./bin/monitorbeat -config configs/p2_selfstats.yaml
+# dmesg (内核异常，需要 root)
+sudo ./bin/monitorbeat -config configs/p2_dmesg.yaml
+# metricbeat (prometheus pull)
+./bin/monitorbeat -config configs/p2_metricbeat.yaml
+```
+
+## 构建
+
+```bash
+make build        # 编译到 bin/monitorbeat
+make test         # 运行单测
+make vet          # go vet
+make lint         # gofmt 检查
+make docker       # 构建 Docker 镜像
+```
+
+本机 Go 工具链：`/opt/go/1.25.12/bin/go` (go1.25.12)。
 
 ## P1.1 拨测快速演示
 
@@ -167,6 +172,96 @@ python3 /tmp/sink.py   # 监听 127.0.0.1:9999
 # 4) 失败路径 — 停掉 sink，daemon 写入 JSONL 兜底
 # /tmp/p14-fallback.jsonl 落盘 3 行合法 JSON（basereport 事件）
 ```
+
+## Web 服务 (monitorweb)
+
+`monitorweb` 是 monitorbeat 的可视化层（P3）：一个独立 Go 二进制，作为
+VictoriaMetrics 的 PromQL 查询代理 + 静态前端托管。**自身不存储数据**，只查 VM。
+
+### 架构
+
+```
+monitorbeat ──http output(format:victoriametrics)──▶ VictoriaMetrics
+                                                        ▲ PromQL
+monitorweb (Go API 代理 + 静态 SPA) ──────────────────▶ React 仪表盘
+```
+
+agent 端**零代码改动**：只需在配置里加一个 `outputs` 指向 VM 即可（见下）。
+
+### 构建与运行
+
+```bash
+# 1. 构建前端（产出 web/ui/dist，由 Go 托管）
+make web-ui            # = npm install && npm run build（在 web/ui）
+
+# 2. 构建 monitorweb 二进制
+make monitorweb        # 产出 bin/monitorweb
+
+# 或一次性构建前后端
+make web
+
+# 3. 运行
+./bin/monitorweb -config web/configs/web.yaml
+# 默认监听 0.0.0.0:8080，访问 http://127.0.0.1:8080/
+```
+
+配置 `web/configs/web.yaml`：
+
+```yaml
+listen: "0.0.0.0:8080"
+victoriametrics:
+  url: "http://vmtest-1-victoria-metrics-cluster-vmselect.bkbase-test.svc.cluster.local:8481/select/0/prometheus"
+  timeout: 15s
+ui_dir: "./web/ui/dist"          # 构建后的前端目录
+```
+
+### 接入 VictoriaMetrics（agent 端，零改动）
+
+在 monitorbeat 配置加一个 `http` output，指向 VM 的 import 接口：
+
+```yaml
+outputs:
+  - type: http
+    url: "http://vmtest-1-victoria-metrics-cluster-vminsert.bkbase-test.svc.cluster.local:8480/insert/0/prometheus/api/v1/import"
+    method: POST
+    format: victoriametrics
+    timeout: 10s
+```
+
+如果使用单节点 VictoriaMetrics，则把：
+
+- `web/configs/web.yaml` 的 `victoriametrics.url` 改为 `http://127.0.0.1:8428`
+- monitorbeat `outputs.url` 改为 `http://127.0.0.1:8428/api/v1/import`
+
+启动单节点 VM（任选其一）：
+
+```bash
+# 二进制
+./victoria-metrics-prod
+
+# 或 docker
+docker run -p 8428:8428 victoriametrics/victoria-metrics
+```
+
+### API 契约
+
+Base `/api/v1`：
+
+| 端点 | 说明 |
+|---|---|
+| `GET /hosts` | 主机清单（hostname/os/arch/last_seen） |
+| `GET /host/:host/summary` | 主机当前指标快照 |
+| `GET /query/range?host=&metric=&from=&to=&step=` | 时序查询（多 metric） |
+| `GET /metrics/names?host=` | 可用指标名列表 |
+| `GET /events?host=&type=&from=&to=&step=` | 异常/事件计数时序 |
+| `GET /probes?host=&from=&to=&step=` | ping/tcp/http 成功率 + 延迟 |
+| `GET /healthz` | 健康检查 |
+
+完整设计见 [web 服务设计文档](./docs/web-service-design.md)。
+
+> 说明：指标类（basereport/processbeat/metricbeat/selfstats）完整可视化；
+> 结构化异常明细（exceptionbeat/dmesg/keyword）在 VM 形态下以"计数时序"呈现，
+> 明细钻取为后续迭代。
 
 ## License
 

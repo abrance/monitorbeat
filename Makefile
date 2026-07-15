@@ -1,28 +1,68 @@
 # Makefile — monitorbeat
-# 占位骨架，P0 阶段填充实际 target
 
 GO        ?= go
 GOFLAGS   ?=
 BIN_DIR   ?= bin
 BIN_NAME  ?= monitorbeat
 PKG       := ./...
+VERSION   ?= dev
+LDFLAGS   := -s -w -X main.version=$(VERSION)
 
-.PHONY: help build test lint docker clean
+# Web 服务 (monitorweb) 目标
+WEB_DIR     ?= web/ui
+WEB_BIN     ?= monitorweb
+VM_UI_BIN   ?= $(BIN_DIR)/$(WEB_BIN)
 
-help: ## 显示帮助
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+.PHONY: help build test test-verbose vet lint fmt docker clean
+.PHONY: web-ui web-ui-install monitorweb web web-clean
 
-build: ## 编译二进制到 bin/
-	@echo "(P0 待实现) $(GO) build -o $(BIN_DIR)/$(BIN_NAME) ./cmd/monitorbeat"
+help:
+	@grep -E '^[a-zA-Z_-]+:.*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ": "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-test: ## 运行单测
-	@echo "(P0 待实现) $(GO) test $(GOFLAGS) $(PKG)"
+build:
+	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(BIN_NAME) ./cmd/monitorbeat
 
-lint: ## 静态检查
-	@echo "(P0 待实现) $(GO) vet $(PKG) && golangci-lint run"
+test:
+	$(GO) test $(GOFLAGS) $(PKG)
 
-docker: ## 构建镜像
-	@echo "(P2 待实现) docker build -t monitorbeat:latest ."
+test-verbose:
+	$(GO) test $(GOFLAGS) -v -count=1 $(PKG)
 
-clean: ## 清理
+vet:
+	$(GO) vet $(PKG)
+
+lint: vet
+	@gofmt -l . | grep -q . && echo "ERROR: unformatted files:" && gofmt -l . && exit 1 || true
+	@echo "gofmt: clean"
+
+fmt:
+	gofmt -w .
+
+docker:
+	docker build -t monitorbeat:$(VERSION) -t monitorbeat:latest .
+
+clean:
 	rm -rf $(BIN_DIR)
+
+# ---------- Web 服务 (P3) ----------
+
+web-ui-install:
+	cd $(WEB_DIR) && npm install
+
+# 构建前端（产出 web/ui/dist，由 monitorweb 托管）
+web-ui: web-ui-install
+	cd $(WEB_DIR) && npm run build
+
+# 构建 monitorweb Go 二进制
+monitorweb:
+	$(GO) build -ldflags "$(LDFLAGS)" -o $(VM_UI_BIN) ./cmd/monitorweb
+
+# 一次性构建前后端
+web: web-ui monitorweb
+
+# 仅前端安装依赖（开发用）
+web-dev:
+	cd $(WEB_DIR) && npm run dev
+
+web-clean:
+	rm -rf $(WEB_DIR)/dist $(WEB_DIR)/node_modules $(VM_UI_BIN)

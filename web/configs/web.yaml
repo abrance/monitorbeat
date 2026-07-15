@@ -1,0 +1,5 @@
+listen: "0.0.0.0:8080"
+victoriametrics:
+  url: "http://vmtest-1-victoria-metrics-cluster-vmselect.bkbase-test.svc.cluster.local:8481/select/0/prometheus"
+  timeout: 15s
+ui_dir: "./web/ui/dist"

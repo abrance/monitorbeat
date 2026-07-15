@@ -1,0 +1,10 @@
+apiVersion: v2
+name: monitorbeat
+description: Monitorbeat - host monitoring agent (DaemonSet) and web dashboard (monitorweb / Deployment)
+type: application
+version: 0.1.0
+appVersion: "dev"
+keywords:
+  - monitoring
+  - host-metrics
+  - victoriametrics
