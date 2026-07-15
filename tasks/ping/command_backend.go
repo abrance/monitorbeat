@@ -66,10 +66,18 @@ func runCommandBackend(ctx context.Context, start time.Time, cfg *configs.PingCo
 			Metrics:  map[string]float64{"backend": 0}, // 0 = command
 		}
 	}
-	if err != nil {
-		// Surface stderr because exit-code-only errors (e.g. "unknown
-		// host") are otherwise opaque.
-		msg := err.Error()
+
+	// `ping` exits non-zero whenever it observes packet loss; that is the
+	// normal outcome of a probe, not a command failure. Always parse the
+	// captured stdout so partial loss is reported with real stats instead
+	// of being swallowed as a hard error. A non-zero exit with no parsable
+	// output (e.g. unknown host) still surfaces as an error below.
+	metrics, parseErr := parseCommandOutput(stdout.String())
+	if parseErr != nil {
+		msg := parseErr.Error()
+		if err != nil {
+			msg = fmt.Sprintf("%s: %v", msg, err)
+		}
 		if stderr.Len() > 0 {
 			msg = fmt.Sprintf("%s: %s", msg, stderr.String())
 		}
@@ -79,18 +87,11 @@ func runCommandBackend(ctx context.Context, start time.Time, cfg *configs.PingCo
 			Metrics:  map[string]float64{"backend": 0},
 		}
 	}
-
-	metrics, parseErr := parseCommandOutput(stdout.String())
-	if parseErr != nil {
-		return probe.Result{
-			Duration: duration,
-			Error:    parseErr.Error(),
-			Metrics:  map[string]float64{"backend": 0},
-		}
-	}
 	if metrics == nil {
 		metrics = map[string]float64{}
 	}
 	metrics["backend"] = 0 // 0 = command
-	return probe.Result{Success: true, Duration: duration, Metrics: metrics}
+	// Success means at least one reply came back, derived from the parsed
+	// stats rather than ping's exit code (which is non-zero on any loss).
+	return probe.Result{Success: metrics["packets_received"] > 0, Duration: duration, Metrics: metrics}
 }
