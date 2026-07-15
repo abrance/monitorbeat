@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/emirpasic/gods v1.18.1
+	github.com/fsnotify/fsnotify v1.10.1
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.70.0
 	github.com/shirou/gopsutil/v3 v3.24.5

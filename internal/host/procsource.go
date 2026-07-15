@@ -58,11 +58,11 @@ func NewFileSource(path string) *FileSource {
 }
 
 func (s *FileSource) Start(_ context.Context) error { return ErrNotImplemented }
-func (s *FileSource) Stop()                          {}
-func (s *FileSource) Reload() error                   { return ErrNotImplemented }
-func (s *FileSource) GetHostID() string               { return s.info.HostID }
-func (s *FileSource) GetInfo() (Info, error)          { return s.info, ErrNotImplemented }
-func (s *FileSource) Notify() <-chan struct{}          { return nil }
+func (s *FileSource) Stop()                         {}
+func (s *FileSource) Reload() error                 { return ErrNotImplemented }
+func (s *FileSource) GetHostID() string             { return s.info.HostID }
+func (s *FileSource) GetInfo() (Info, error)        { return s.info, ErrNotImplemented }
+func (s *FileSource) Notify() <-chan struct{}       { return nil }
 
 // --- HTTPSource: 拉远端 API 获取身份 ---
 
@@ -78,11 +78,11 @@ func NewHTTPSource(endpoint string) *HTTPSource {
 }
 
 func (s *HTTPSource) Start(_ context.Context) error { return ErrNotImplemented }
-func (s *HTTPSource) Stop()                          {}
-func (s *HTTPSource) Reload() error                   { return ErrNotImplemented }
-func (s *HTTPSource) GetHostID() string               { return s.info.HostID }
-func (s *HTTPSource) GetInfo() (Info, error)            { return s.info, ErrNotImplemented }
-func (s *HTTPSource) Notify() <-chan struct{}           { return nil }
+func (s *HTTPSource) Stop()                         {}
+func (s *HTTPSource) Reload() error                 { return ErrNotImplemented }
+func (s *HTTPSource) GetHostID() string             { return s.info.HostID }
+func (s *HTTPSource) GetInfo() (Info, error)        { return s.info, ErrNotImplemented }
+func (s *HTTPSource) Notify() <-chan struct{}       { return nil }
 
 // --- StaticSource: 内存注入，便于测试 ---
 
@@ -97,12 +97,12 @@ func NewStaticSource(info Info) *StaticSource {
 	return &StaticSource{info: info, notif: make(chan struct{}, 1)}
 }
 
-func (s *StaticSource) Start(_ context.Context) error    { return nil }
-func (s *StaticSource) Stop()                             {}
-func (s *StaticSource) Reload() error                     { return nil }
-func (s *StaticSource) GetHostID() string                 { return s.info.HostID }
-func (s *StaticSource) GetInfo() (Info, error)             { return s.info, nil }
-func (s *StaticSource) Notify() <-chan struct{}            { return s.notif }
+func (s *StaticSource) Start(_ context.Context) error { return nil }
+func (s *StaticSource) Stop()                         {}
+func (s *StaticSource) Reload() error                 { return nil }
+func (s *StaticSource) GetHostID() string             { return s.info.HostID }
+func (s *StaticSource) GetInfo() (Info, error)        { return s.info, nil }
+func (s *StaticSource) Notify() <-chan struct{}       { return s.notif }
 
 // SetInfo 显式更新静态源的身份，触发 Notify。
 func (s *StaticSource) SetInfo(info Info) {
@@ -112,4 +112,3 @@ func (s *StaticSource) SetInfo(info Info) {
 	default:
 	}
 }
-

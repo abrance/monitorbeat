@@ -92,11 +92,11 @@ func TestGather_OnlyCpu(t *testing.T) {
 // 验证：sanitizeMetricKey 把路径转成合法 metric key。
 func TestSanitizeMetricKey(t *testing.T) {
 	cases := map[string]string{
-		"/":            "root",
-		"":             "root",
-		"/var/log":     "var_log",
-		"/var/lib/foo": "var_lib_foo",
-		"/mnt/data.1":  "mnt_data_1",
+		"/":              "root",
+		"":               "root",
+		"/var/log":       "var_log",
+		"/var/lib/foo":   "var_lib_foo",
+		"/mnt/data.1":    "mnt_data_1",
 		"/run/user/1000": "run_user_1000",
 	}
 	for in, want := range cases {

@@ -24,8 +24,8 @@ type SimpleEvent struct {
 	Timestamp time.Time
 }
 
-func (e SimpleEvent) GetType() string       { return e.Type }
-func (e SimpleEvent) GetData() any          { return e.Data }
+func (e SimpleEvent) GetType() string         { return e.Type }
+func (e SimpleEvent) GetData() any            { return e.Data }
 func (e SimpleEvent) GetTimestamp() time.Time { return e.Timestamp }
 
 // NewEvent 构造带当前时间戳的简单事件。

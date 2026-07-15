@@ -25,14 +25,14 @@ func newStubTask(id int32) *stubTask {
 	return &stubTask{id: id, cfg: &stubCfg{ident: "stub:" + fmt.Sprintf("%d", id)}}
 }
 
-func (s *stubTask) GetTaskID() int32                { return s.id }
-func (s *stubTask) GetStatus() define.Status        { return define.StatusReady }
-func (s *stubTask) SetConfig(define.TaskConfig)     {}
-func (s *stubTask) GetConfig() define.TaskConfig    { return s.cfg }
-func (s *stubTask) SetGlobalConfig(define.Config)   {}
-func (s *stubTask) GetGlobalConfig() define.Config  { return nil }
-func (s *stubTask) Reload()                          {}
-func (s *stubTask) Wait()                            {}
+func (s *stubTask) GetTaskID() int32               { return s.id }
+func (s *stubTask) GetStatus() define.Status       { return define.StatusReady }
+func (s *stubTask) SetConfig(define.TaskConfig)    {}
+func (s *stubTask) GetConfig() define.TaskConfig   { return s.cfg }
+func (s *stubTask) SetGlobalConfig(define.Config)  {}
+func (s *stubTask) GetGlobalConfig() define.Config { return nil }
+func (s *stubTask) Reload()                        {}
+func (s *stubTask) Wait()                          {}
 func (s *stubTask) Stop() {
 	if s.blocking != nil {
 		close(s.blocking)
@@ -55,15 +55,15 @@ type stubCfg struct {
 	ident string
 }
 
-func (c *stubCfg) GetTaskID() int32            { return 1 }
-func (c *stubCfg) GetIdent() string            { return c.ident }
-func (c *stubCfg) SetIdent(s string)           { c.ident = s }
-func (c *stubCfg) GetType() string             { return "stub" }
-func (c *stubCfg) GetTimeout() time.Duration   { return time.Second }
-func (c *stubCfg) GetPeriod() time.Duration    { return time.Second }
+func (c *stubCfg) GetTaskID() int32               { return 1 }
+func (c *stubCfg) GetIdent() string               { return c.ident }
+func (c *stubCfg) SetIdent(s string)              { c.ident = s }
+func (c *stubCfg) GetType() string                { return "stub" }
+func (c *stubCfg) GetTimeout() time.Duration      { return time.Second }
+func (c *stubCfg) GetPeriod() time.Duration       { return time.Second }
 func (c *stubCfg) GetLabels() []map[string]string { return nil }
-func (c *stubCfg) GetEnabled() bool            { return true }
-func (c *stubCfg) Clean() error                { return nil }
+func (c *stubCfg) GetEnabled() bool               { return true }
+func (c *stubCfg) Clean() error                   { return nil }
 
 // 验证：Start 后所有 task 各执行一次，事件按顺序入 chan，scheduler 自动退出。
 func TestScheduler_RunAllOnce(t *testing.T) {

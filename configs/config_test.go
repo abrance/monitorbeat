@@ -257,3 +257,90 @@ func TestHTTPOutputConfig_RequiresURL(t *testing.T) {
 		t.Fatal("expected error for empty url")
 	}
 }
+
+func TestExceptionbeatConfig_CleanDefaults(t *testing.T) {
+	c := &Config{
+		Exceptionbeats: []ExceptionbeatConfig{
+			{BaseTaskParam: BaseTaskParam{Enabled: true}},
+		},
+	}
+	if err := c.Clean(); err != nil {
+		t.Fatalf("clean: %v", err)
+	}
+	e := c.Exceptionbeats[0]
+	if e.GetIdent() != "exceptionbeat:1" {
+		t.Fatalf("ident = %q, want exceptionbeat:1", e.GetIdent())
+	}
+	if e.GetType() != define.ModuleExceptionbeat {
+		t.Fatalf("type = %q, want %q", e.GetType(), define.ModuleExceptionbeat)
+	}
+	if e.DiskUsagePercent <= 0 {
+		t.Fatal("disk_usage_percent should default")
+	}
+	if e.DiskMinFreeGB <= 0 {
+		t.Fatal("disk_min_free_gb should default")
+	}
+	if e.CorefileReportGap <= 0 {
+		t.Fatal("corefile_report_gap should default")
+	}
+	if e.OutOfMemReportGap <= 0 {
+		t.Fatal("oom_report_gap should default")
+	}
+	if e.Period <= 0 {
+		t.Fatal("period should default")
+	}
+}
+
+func TestConfig_ExceptionbeatGrouping(t *testing.T) {
+	c := &Config{
+		Exceptionbeats: []ExceptionbeatConfig{
+			{BaseTaskParam: BaseTaskParam{TaskID: 41}},
+			{BaseTaskParam: BaseTaskParam{TaskID: 42}},
+		},
+	}
+	if got := c.GetTaskConfigListByType(define.ModuleExceptionbeat); len(got) != 2 {
+		t.Fatalf("exceptionbeat list len = %d, want 2", len(got))
+	}
+	if got := c.AllTaskConfigs(); len(got) != 2 {
+		t.Fatalf("all task configs len = %d, want 2", len(got))
+	}
+}
+
+func TestProcessbeatConfig_CleanDefaults(t *testing.T) {
+	c := &Config{
+		Processbeats: []ProcessbeatConfig{
+			{BaseTaskParam: BaseTaskParam{Enabled: true}},
+		},
+	}
+	if err := c.Clean(); err != nil {
+		t.Fatalf("clean: %v", err)
+	}
+	p := c.Processbeats[0]
+	if p.GetIdent() != "processbeat:1" {
+		t.Fatalf("ident = %q, want processbeat:1", p.GetIdent())
+	}
+	if p.GetType() != define.ModuleProcessbeat {
+		t.Fatalf("type = %q, want %q", p.GetType(), define.ModuleProcessbeat)
+	}
+	if p.TopN <= 0 {
+		t.Fatal("top_n should default")
+	}
+	if p.Period <= 0 {
+		t.Fatal("period should default")
+	}
+}
+
+func TestConfig_ProcessbeatGrouping(t *testing.T) {
+	c := &Config{
+		Processbeats: []ProcessbeatConfig{
+			{BaseTaskParam: BaseTaskParam{TaskID: 61}},
+			{BaseTaskParam: BaseTaskParam{TaskID: 62}},
+		},
+	}
+	if got := c.GetTaskConfigListByType(define.ModuleProcessbeat); len(got) != 2 {
+		t.Fatalf("processbeat list len = %d, want 2", len(got))
+	}
+	if got := c.AllTaskConfigs(); len(got) != 2 {
+		t.Fatalf("all task configs len = %d, want 2", len(got))
+	}
+}

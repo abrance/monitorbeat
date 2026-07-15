@@ -56,15 +56,15 @@ func itoa(i int32) string {
 	return string(b[pos:])
 }
 
-func (t *fakeTask) GetTaskID() int32                  { return t.id }
-func (t *fakeTask) GetStatus() define.Status          { return t.status }
-func (t *fakeTask) SetConfig(c define.TaskConfig)     { t.cfg = c }
-func (t *fakeTask) GetConfig() define.TaskConfig      { return t.cfg }
-func (t *fakeTask) SetGlobalConfig(c define.Config)   { t.gcfg = c }
-func (t *fakeTask) GetGlobalConfig() define.Config    { return t.gcfg }
-func (t *fakeTask) Reload()                           { atomic.AddInt32(&t.reloaded, 1) }
-func (t *fakeTask) Wait()                             {}
-func (t *fakeTask) Stop()                             {}
+func (t *fakeTask) GetTaskID() int32                { return t.id }
+func (t *fakeTask) GetStatus() define.Status        { return t.status }
+func (t *fakeTask) SetConfig(c define.TaskConfig)   { t.cfg = c }
+func (t *fakeTask) GetConfig() define.TaskConfig    { return t.cfg }
+func (t *fakeTask) SetGlobalConfig(c define.Config) { t.gcfg = c }
+func (t *fakeTask) GetGlobalConfig() define.Config  { return t.gcfg }
+func (t *fakeTask) Reload()                         { atomic.AddInt32(&t.reloaded, 1) }
+func (t *fakeTask) Wait()                           {}
+func (t *fakeTask) Stop()                           {}
 func (t *fakeTask) Run(_ context.Context, e chan<- define.Event) {
 	atomic.AddInt32(&t.runCount, 1)
 	e <- define.NewEvent("fake", map[string]any{"id": t.id})
@@ -74,8 +74,8 @@ type fakeCfg struct {
 	configs.BaseTaskParam
 }
 
-func (f *fakeCfg) GetType() string  { return "fake" }
-func (f *fakeCfg) Clean() error     { return nil }
+func (f *fakeCfg) GetType() string { return "fake" }
+func (f *fakeCfg) Clean() error    { return nil }
 
 // fakeGlobalCfg 满足 define.Config 的最小实现。
 type fakeGlobalCfg struct {

@@ -102,4 +102,3 @@ func JobTimeComparator(a, b interface{}) int {
 	}
 	return utils.TimeComparator(ja.GetCheckTime(), jb.GetCheckTime())
 }
-

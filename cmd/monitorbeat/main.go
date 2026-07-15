@@ -38,10 +38,17 @@ import (
 
 	// 副作用导入：触发 init() 把 builder 注册到 tasks.factory。
 	_ "github.com/abrance/monitorbeat/tasks/basereport"
+	_ "github.com/abrance/monitorbeat/tasks/dmesg"
+	_ "github.com/abrance/monitorbeat/tasks/exceptionbeat"
+	_ "github.com/abrance/monitorbeat/tasks/gatherupbeat"
 	_ "github.com/abrance/monitorbeat/tasks/http"
 	_ "github.com/abrance/monitorbeat/tasks/keyword"
+	_ "github.com/abrance/monitorbeat/tasks/metricbeat"
 	_ "github.com/abrance/monitorbeat/tasks/ping"
+	_ "github.com/abrance/monitorbeat/tasks/processbeat"
 	_ "github.com/abrance/monitorbeat/tasks/script"
+	_ "github.com/abrance/monitorbeat/tasks/selfstats"
+	_ "github.com/abrance/monitorbeat/tasks/socketsnapshot"
 	_ "github.com/abrance/monitorbeat/tasks/tcp"
 	_ "github.com/abrance/monitorbeat/tasks/udp"
 )
@@ -77,7 +84,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	eng := engine.New(cfg.GetEventBufferSize())
+	eng := engine.New(cfg.GetEventBufferSize(), version, 60*time.Second)
 	if err := wireOutputs(eng, cfg.Outputs); err != nil {
 		slog.Error("wire outputs failed", "err", err)
 		os.Exit(1)

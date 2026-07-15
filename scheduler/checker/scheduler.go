@@ -28,11 +28,11 @@ import (
 type Scheduler struct {
 	*define.BaseScheduler
 
-	ctx     context.Context
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-	tasks   *treemap.Map // key: ident, value: define.Task
-	mu      sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
+	tasks  *treemap.Map // key: ident, value: define.Task
+	mu     sync.RWMutex
 }
 
 // New 构造 checker 调度器。

@@ -27,11 +27,11 @@ type BaseScheduler struct {
 	Config    Config
 }
 
-func (s *BaseScheduler) Stop()         { s.Status = StatusFinished }
-func (s *BaseScheduler) Wait()          { s.Status = StatusFinished }
+func (s *BaseScheduler) Stop()             { s.Status = StatusFinished }
+func (s *BaseScheduler) Wait()             { s.Status = StatusFinished }
 func (s *BaseScheduler) GetStatus() Status { return s.Status }
-func (s *BaseScheduler) IsDaemon() bool   { return true }
-func (s *BaseScheduler) Count() int       { return 0 }
+func (s *BaseScheduler) IsDaemon() bool    { return true }
+func (s *BaseScheduler) Count() int        { return 0 }
 
 func (s *BaseScheduler) Start(_ context.Context) error {
 	s.Status = StatusRunning

@@ -6,7 +6,10 @@
 // P1.2 MVP（raw_log only）：
 //   - 单文件 tail + regex capture
 //   - 每命中一行发一条 raw_log 事件（matches_count=1）
-//   - 不做周期聚合，不做 offset 持久化
+//
+// P2 enhancement:
+//   - offset_registry 持久化读取偏移，重启断点续读
+//   - fsnotify 替代轮询，降低采集延迟
 //
 // 行为对齐 bkmonitorbeat/tasks/keyword/raw_log 分支，差异：
 //   - 去 libgse，事件走 internal/output（已通过 define.Event 通道）
@@ -50,7 +53,8 @@ func builder(tc define.TaskConfig) (define.Task, error) {
 // Gather 是 keyword task 的运行时实例。
 type Gather struct {
 	tasks.BaseTask
-	cfg *configs.KeywordConfig
+	cfg      *configs.KeywordConfig
+	registry *file.OffsetRegistry
 }
 
 // New 构造可运行的 keyword task。
@@ -64,17 +68,36 @@ func New(cfg *configs.KeywordConfig) define.Task {
 // Run 阻塞读文件 → 命中正则 → 发 raw_log 事件；ctx 取消即退出。
 func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 	re := regexp.MustCompile(g.cfg.Pattern)
-	h, err := file.New(file.HarvesterConfig{
+
+	var registry *file.OffsetRegistry
+	if g.cfg.OffsetRegistry != "" {
+		var err error
+		registry, err = file.NewOffsetRegistry(g.cfg.OffsetRegistry)
+		if err != nil {
+			g.emitError(ctx, e, fmt.Errorf("registry: %w", err))
+			return
+		}
+		g.registry = registry
+	}
+
+	hc := file.HarvesterConfig{
 		File:       g.cfg.File,
 		Encoding:   g.cfg.Encoding,
 		FromBegin:  g.cfg.FromBegin == nil || *g.cfg.FromBegin,
 		BufferSize: g.cfg.BufferSize,
-	})
+		Registry:   registry,
+	}
+	h, err := file.New(hc)
 	if err != nil {
 		g.emitError(ctx, e, err)
 		return
 	}
-	defer h.Close()
+	defer func() {
+		h.Close()
+		if registry != nil {
+			registry.Save()
+		}
+	}()
 
 	lineNo := 0
 	for {

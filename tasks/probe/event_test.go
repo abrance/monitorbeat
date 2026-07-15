@@ -15,7 +15,7 @@ func TestEventDataBuildsNormalizedShape(t *testing.T) {
 	result := Result{
 		Success:  true,
 		Duration: 1500 * time.Microsecond,
-		Metrics: map[string]float64{"connect_ms": 1.25},
+		Metrics:  map[string]float64{"connect_ms": 1.25},
 	}
 
 	ev := BuildEvent("tcp", "127.0.0.1:22", 42, result)

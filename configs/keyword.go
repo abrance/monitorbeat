@@ -17,8 +17,10 @@ const (
 //
 // P1.2 MVP 限定：
 //   - 单文件路径，不支持 glob
-//   - 不持久化 offset（每次启动按 FromBegin 决定从文件头或当前 EOF 开始）
 //   - 编码仅支持 utf-8 / gb18030
+//
+// P2 enhancement:
+//   - offset_registry 持久化读取偏移，重启断点续读
 type KeywordConfig struct {
 	BaseTaskParam `yaml:",inline"`
 
@@ -29,6 +31,9 @@ type KeywordConfig struct {
 
 	// FromBegin 用指针以区分"未配置"与"false"。
 	FromBegin *bool `yaml:"from_begin"`
+
+	// OffsetRegistry 持久化 offset 的 JSON 文件路径。空表示不持久化。
+	OffsetRegistry string `yaml:"offset_registry"`
 }
 
 func (k *KeywordConfig) GetType() string { return define.ModuleKeyword }

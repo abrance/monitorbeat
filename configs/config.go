@@ -36,13 +36,20 @@ type Config struct {
 
 	// Basereports 是 basereport 任务配置列表。
 	// P1 阶段在此并行添加 PingConfigs/TCPConfigs/HTTPConfigs/KeywordConfigs/ScriptConfigs。
-	Basereports []BasereportConfig `yaml:"basereports"`
-	Pings       []PingConfig       `yaml:"pings"`
-	TCPs        []TCPConfig        `yaml:"tcps"`
-	UDPs        []UDPConfig        `yaml:"udps"`
-	HTTPs       []HTTPConfig       `yaml:"https"`
-	Keywords    []KeywordConfig    `yaml:"keywords"`
-	Scripts     []ScriptConfig     `yaml:"scripts"`
+	Basereports     []BasereportConfig     `yaml:"basereports"`
+	Pings           []PingConfig           `yaml:"pings"`
+	TCPs            []TCPConfig            `yaml:"tcps"`
+	UDPs            []UDPConfig            `yaml:"udps"`
+	HTTPs           []HTTPConfig           `yaml:"https"`
+	Keywords        []KeywordConfig        `yaml:"keywords"`
+	Scripts         []ScriptConfig         `yaml:"scripts"`
+	Exceptionbeats  []ExceptionbeatConfig  `yaml:"exceptionbeats"`
+	Processbeats    []ProcessbeatConfig    `yaml:"processbeats"`
+	SocketSnapshots []SocketSnapshotConfig `yaml:"socket_snapshots"`
+	SelfStats       []SelfStatsConfig      `yaml:"self_stats"`
+	GatherUpBeats   []GatherUpBeatConfig   `yaml:"gather_up_beats"`
+	Dmesgs          []DmesgConfig          `yaml:"dmesgs"`
+	Metricbeats     []MetricbeatConfig     `yaml:"metricbeats"`
 }
 
 // OutputConfig 是单个输出端的配置，type 决定具体实现。
@@ -159,6 +166,34 @@ func (c *Config) GetTaskConfigListByType(typ string) []define.TaskConfig {
 		for i := range c.Scripts {
 			out = append(out, &c.Scripts[i])
 		}
+	case define.ModuleExceptionbeat:
+		for i := range c.Exceptionbeats {
+			out = append(out, &c.Exceptionbeats[i])
+		}
+	case define.ModuleProcessbeat:
+		for i := range c.Processbeats {
+			out = append(out, &c.Processbeats[i])
+		}
+	case define.ModuleSocketSnapshot:
+		for i := range c.SocketSnapshots {
+			out = append(out, &c.SocketSnapshots[i])
+		}
+	case define.ModuleSelfStats:
+		for i := range c.SelfStats {
+			out = append(out, &c.SelfStats[i])
+		}
+	case define.ModuleGatherUpBeat:
+		for i := range c.GatherUpBeats {
+			out = append(out, &c.GatherUpBeats[i])
+		}
+	case define.ModuleDmesg:
+		for i := range c.Dmesgs {
+			out = append(out, &c.Dmesgs[i])
+		}
+	case define.ModuleMetricbeat:
+		for i := range c.Metricbeats {
+			out = append(out, &c.Metricbeats[i])
+		}
 	}
 	return out
 }
@@ -188,6 +223,27 @@ func (c *Config) AllTaskConfigs() []define.TaskConfig {
 	}
 	for i := range c.Scripts {
 		out = append(out, &c.Scripts[i])
+	}
+	for i := range c.Exceptionbeats {
+		out = append(out, &c.Exceptionbeats[i])
+	}
+	for i := range c.Processbeats {
+		out = append(out, &c.Processbeats[i])
+	}
+	for i := range c.SocketSnapshots {
+		out = append(out, &c.SocketSnapshots[i])
+	}
+	for i := range c.SelfStats {
+		out = append(out, &c.SelfStats[i])
+	}
+	for i := range c.GatherUpBeats {
+		out = append(out, &c.GatherUpBeats[i])
+	}
+	for i := range c.Dmesgs {
+		out = append(out, &c.Dmesgs[i])
+	}
+	for i := range c.Metricbeats {
+		out = append(out, &c.Metricbeats[i])
 	}
 	return out
 }
@@ -228,6 +284,41 @@ func (c *Config) Clean() error {
 	}
 	for i := range c.Scripts {
 		if err := c.Scripts[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.Exceptionbeats {
+		if err := c.Exceptionbeats[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.Processbeats {
+		if err := c.Processbeats[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.SocketSnapshots {
+		if err := c.SocketSnapshots[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.SelfStats {
+		if err := c.SelfStats[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.GatherUpBeats {
+		if err := c.GatherUpBeats[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.Dmesgs {
+		if err := c.Dmesgs[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.Metricbeats {
+		if err := c.Metricbeats[i].Clean(); err != nil {
 			return err
 		}
 	}
