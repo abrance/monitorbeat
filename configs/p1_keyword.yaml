@@ -1,0 +1,31 @@
+# monitorbeat P1.2 keyword (raw_log) demo 配置
+#
+# 准备 demo 日志源（另起终端）：
+#   rm -f /tmp/demo.log && touch /tmp/demo.log
+#
+# 持续追加（任选一种）：
+#   a) while true; do echo "ERROR payment_id=$((RANDOM%1000)) amount=$(awk 'BEGIN{printf \"%.2f\",rand()*100}')"; sleep 0.5; done >> /tmp/demo.log
+#   b) 或一次性追加 5 行：
+#        for i in 1 2 3 4 5; do echo "ERROR payment_id=$i amount=1.${i}"; done >> /tmp/demo.log
+#
+# 跑 daemon：
+#   ./bin/monitorbeat -config configs/p1_keyword.yaml
+#
+# console 会输出 raw_log 事件，每条 fields 包含 payment_id / amount。
+# 5s 内应能看到至少 1 条 raw_log 事件。
+
+check_interval: 1s
+event_buffer_size: 1024
+admin_addr: ""
+
+outputs:
+  - type: console
+
+keywords:
+  - task_id: 2001
+    enabled: true
+    file: /tmp/demo.log
+    pattern: 'ERROR payment_id=(\d+) amount=(\d+\.\d+)'
+    encoding: utf-8
+    buffer_size: 65536
+    from_begin: true

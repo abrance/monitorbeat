@@ -31,11 +31,13 @@ import (
 	"github.com/abrance/monitorbeat/internal/output"
 	"github.com/abrance/monitorbeat/internal/reloader"
 	"github.com/abrance/monitorbeat/scheduler/daemon"
+	"github.com/abrance/monitorbeat/scheduler/keyword"
 	"github.com/abrance/monitorbeat/tasks"
 
 	// 副作用导入：触发 init() 把 builder 注册到 tasks.factory。
 	_ "github.com/abrance/monitorbeat/tasks/basereport"
 	_ "github.com/abrance/monitorbeat/tasks/http"
+	_ "github.com/abrance/monitorbeat/tasks/keyword"
 	_ "github.com/abrance/monitorbeat/tasks/ping"
 	_ "github.com/abrance/monitorbeat/tasks/tcp"
 	_ "github.com/abrance/monitorbeat/tasks/udp"
@@ -92,17 +94,29 @@ func main() {
 	}
 
 	sched := daemon.New(eng.Chan(), cfg)
+	keywordSched := keyword.New(eng.Chan(), cfg)
 	tasksList, skipped := buildAllTasks(cfg)
 	for _, t := range tasksList {
-		sched.Add(t)
-		logging.Info("task registered", "type", t.GetConfig().GetType(), "ident", t.GetConfig().GetIdent())
+		typ := t.GetConfig().GetType()
+		switch typ {
+		case define.ModuleKeyword:
+			keywordSched.Add(t)
+			logging.Info("task registered", "type", typ, "ident", t.GetConfig().GetIdent(), "scheduler", "keyword")
+		default:
+			sched.Add(t)
+			logging.Info("task registered", "type", typ, "ident", t.GetConfig().GetIdent(), "scheduler", "daemon")
+		}
 	}
 	for _, typ := range skipped {
 		slog.Warn("task skipped", "type", typ)
 	}
 
 	if err := sched.Start(ctx); err != nil {
-		slog.Error("scheduler start failed", "err", err)
+		slog.Error("daemon scheduler start failed", "err", err)
+		os.Exit(1)
+	}
+	if err := keywordSched.Start(ctx); err != nil {
+		slog.Error("keyword scheduler start failed", "err", err)
 		os.Exit(1)
 	}
 
@@ -124,7 +138,9 @@ func main() {
 
 	<-ctx.Done()
 	logging.Info("monitorbeat shutting down")
+	keywordSched.Stop()
 	sched.Stop()
+	keywordSched.Wait()
 	sched.Wait()
 	if adminSrv != nil {
 		adminSrv.Stop()

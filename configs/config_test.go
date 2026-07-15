@@ -143,3 +143,49 @@ func TestProbeConfigs_CleanDefaults(t *testing.T) {
 		t.Fatalf("http ident = %q, want http:1", got)
 	}
 }
+
+func TestKeywordConfig_CleanDefaults(t *testing.T) {
+	c := &Config{
+		Keywords: []KeywordConfig{
+			{
+				BaseTaskParam: BaseTaskParam{Enabled: true},
+				File:          "/tmp/demo.log",
+				Pattern:       `ERROR.*payment_id=(\d+)`,
+			},
+		},
+	}
+	if err := c.Clean(); err != nil {
+		t.Fatalf("clean: %v", err)
+	}
+	k := c.Keywords[0]
+	if k.GetIdent() != "keyword:1" {
+		t.Fatalf("ident = %q, want keyword:1", k.GetIdent())
+	}
+	if k.GetType() != define.ModuleKeyword {
+		t.Fatalf("type = %q, want %q", k.GetType(), define.ModuleKeyword)
+	}
+	if k.Encoding == "" {
+		t.Fatal("encoding should default")
+	}
+	if k.BufferSize <= 0 {
+		t.Fatalf("buffer_size should default positive, got %d", k.BufferSize)
+	}
+	if k.FromBegin == nil || !*k.FromBegin {
+		t.Fatalf("from_begin should default to true, got %v", k.FromBegin)
+	}
+}
+
+func TestConfig_KeywordGrouping(t *testing.T) {
+	c := &Config{
+		Keywords: []KeywordConfig{
+			{BaseTaskParam: BaseTaskParam{TaskID: 11}},
+			{BaseTaskParam: BaseTaskParam{TaskID: 12}},
+		},
+	}
+	if got := c.GetTaskConfigListByType(define.ModuleKeyword); len(got) != 2 {
+		t.Fatalf("keyword list len = %d, want 2", len(got))
+	}
+	if got := c.AllTaskConfigs(); len(got) != 2 {
+		t.Fatalf("all task configs len = %d, want 2", len(got))
+	}
+}

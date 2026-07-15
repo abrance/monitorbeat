@@ -22,19 +22,28 @@
 
 ## 状态
 
-✅ **P1.1 拨测任务已完成** — P0 地基 + P1.1 拨测四大任务（`ping` / `tcp` / `udp` / `http`）全跑通：底层采集 + 调度器 + engine + console output + admin/reloader 骨架均可编译。
+✅ **P1.2 日志采集任务已完成** — P1.1 拨测 + P1.2 keyword (raw_log) 日志关键字采集全跑通：`tasks/keyword` 单文件 tail + regex capture + 事件输出。
 
-当前 P1.1 进度：
+当前进度：
+
+| 阶段 | 状态 |
+|---|---|
+| P0 地基 | ✅ basereport + scheduler + console/file output |
+| P1.1 拨测 | ✅ ping / tcp / udp / http 全通过 |
+| P1.2 日志采集 | ✅ keyword raw_log 模式，tail + regex capture |
+| P1.3 脚本采集 | 待开发 |
+
+P1.2 模块详情：
 
 | 模块 | 状态 |
 |---|---|
-| `tasks/probe` 事件模型 | 已实现，测试通过 |
-| probe configs (`ping/tcp/udp/http`) | 已实现，测试通过 |
-| `tasks/tcp` | 已实现，测试通过 |
-| `tasks/udp` | 已实现，测试通过 |
-| `tasks/http` | 已实现，测试通过 |
-| `tasks/ping`（icmp + command 双后端） | 已实现，测试通过（icmp 测试在无 `CAP_NET_RAW` 环境 SKIP） |
-| runtime wiring + P1 demo | `cmd/monitorbeat/main.go` 已挂载，demo 配置 `configs/p1_probe.yaml` 端到端冒烟通过 |
+| `configs/keyword.go` KeywordConfig | 已实现，测试通过 |
+| `tasks/keyword/raw_event.go` 事件构造 | 已实现，测试通过 |
+| `internal/regexp/extract` capture 提取 | 已实现，测试通过 |
+| `internal/input/file` tail harvester | 已实现，测试通过 |
+| `scheduler/keyword` 长驻调度器 | 已实现，测试通过 |
+| `tasks/keyword/keyword.go` Gather + builder | 已实现，测试通过 |
+| runtime wiring + demo | `cmd/monitorbeat/main.go` keyword scheduler dispatch 就绪，`configs/p1_keyword.yaml` 端到端冒烟通过（5 条 raw_log 事件） |
 
 ## 构建
 
@@ -51,9 +60,10 @@
 
 - `go build ./...`：通过
 - `go vet ./...`：clean
-- `go test ./...`：全部通过；`tasks/ping` 5 个用例（4 PASS + 1 SKIP，ICMP 测试在无 raw socket 权限环境 SKIP）
-- `gofmt -l tasks/ping cmd/monitorbeat configs`：clean
-- 端到端冒烟：`configs/p1_probe.yaml` + 本地 `nc` / `python3 -m http.server`，`monitorbeat -check` 返回 `config OK`，8s 实地运行两轮采集，console 打印 `ping_event` / `tcp_event` / `udp_event` / `http_event` 四类事件
+- `go test ./...`：全部通过（16 个包，含 `tasks/keyword` 5 个用例，`scheduler/keyword` 3 个用例，`internal/input/file` 3 个用例，`internal/regexp/extract` 5 个用例）
+- `gofmt -l tasks/keyword configs scheduler/keyword internal/input/file internal/regexp/extract cmd/monitorbeat`：clean
+- P1.1 端到端冒烟：`configs/p1_probe.yaml` + 本地 `nc` / `python3 -m http.server`，`monitorbeat -check` 返回 `config OK`，console 打印 `ping_event` / `tcp_event` / `udp_event` / `http_event` 四类事件
+- P1.2 端到端冒烟：`configs/p1_keyword.yaml` tail `/tmp/demo.log`，regex `ERROR payment_id=(\d+) amount=(\d+\.\d+)`，5 条 `raw_log` 事件全部命中，fields 包含 `payment_id` / `amount`
 
 ## P1.1 拨测快速演示
 
@@ -71,6 +81,24 @@ python3 -m http.server --bind 127.0.0.1 8080
 
 # 4) 跑 daemon（默认周期 5s，~10s 即可看到完整一轮事件）
 ./bin/monitorbeat -config configs/p1_probe.yaml
+```
+
+## P1.2 日志关键字采集快速演示
+
+```bash
+# 1) 编译
+/opt/go/1.25.12/bin/go build -o bin/monitorbeat ./cmd/monitorbeat
+
+# 2) 配置自检
+./bin/monitorbeat -config configs/p1_keyword.yaml -check   # → config OK
+
+# 3) 准备日志源
+rm -f /tmp/demo.log && touch /tmp/demo.log
+for i in 1 2 3 4 5; do echo "ERROR payment_id=$i amount=1.${i}"; done >> /tmp/demo.log
+
+# 4) 跑 daemon（~6s 即可看到 raw_log 事件）
+./bin/monitorbeat -config configs/p1_keyword.yaml
+# console 输出 raw_log 事件，fields 包含 payment_id / amount
 ```
 
 ## License

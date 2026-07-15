@@ -40,6 +40,7 @@ type Config struct {
 	TCPs        []TCPConfig        `yaml:"tcps"`
 	UDPs        []UDPConfig        `yaml:"udps"`
 	HTTPs       []HTTPConfig       `yaml:"https"`
+	Keywords    []KeywordConfig    `yaml:"keywords"`
 }
 
 // OutputConfig 是单个输出端的配置，type 决定具体实现。
@@ -91,6 +92,10 @@ func (c *Config) GetTaskConfigListByType(typ string) []define.TaskConfig {
 		for i := range c.HTTPs {
 			out = append(out, &c.HTTPs[i])
 		}
+	case define.ModuleKeyword:
+		for i := range c.Keywords {
+			out = append(out, &c.Keywords[i])
+		}
 	}
 	return out
 }
@@ -114,6 +119,9 @@ func (c *Config) AllTaskConfigs() []define.TaskConfig {
 	}
 	for i := range c.HTTPs {
 		out = append(out, &c.HTTPs[i])
+	}
+	for i := range c.Keywords {
+		out = append(out, &c.Keywords[i])
 	}
 	return out
 }
@@ -144,6 +152,11 @@ func (c *Config) Clean() error {
 	}
 	for i := range c.HTTPs {
 		if err := c.HTTPs[i].Clean(); err != nil {
+			return err
+		}
+	}
+	for i := range c.Keywords {
+		if err := c.Keywords[i].Clean(); err != nil {
 			return err
 		}
 	}
