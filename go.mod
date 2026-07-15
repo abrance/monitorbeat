@@ -6,6 +6,7 @@ require (
 	github.com/emirpasic/gods v1.18.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	golang.org/x/net v0.57.0
+	golang.org/x/text v0.40.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
