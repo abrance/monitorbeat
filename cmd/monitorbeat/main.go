@@ -35,6 +35,10 @@ import (
 
 	// 副作用导入：触发 init() 把 builder 注册到 tasks.factory。
 	_ "github.com/abrance/monitorbeat/tasks/basereport"
+	_ "github.com/abrance/monitorbeat/tasks/http"
+	_ "github.com/abrance/monitorbeat/tasks/ping"
+	_ "github.com/abrance/monitorbeat/tasks/tcp"
+	_ "github.com/abrance/monitorbeat/tasks/udp"
 )
 
 // version 在构建时由 -ldflags 注入；默认 dev。

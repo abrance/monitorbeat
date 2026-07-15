@@ -1,0 +1,63 @@
+# monitorbeat P1.1 拨测 demo 配置
+#
+# 启动方式：
+#   ./bin/monitorbeat -config configs/p1_probe.yaml
+#
+# 依赖本地监听端口（可另起终端）：
+#   nc -l -p 9999          # TCP 拨测目标
+#   nc -u -l -p 9998       # UDP 拨测目标（expect_response: false）
+#   python3 -m http.server 8080  # HTTP 拨测目标
+#
+# 四个 task 都用 5s period，daemon 启动 ~6s 即可在 console 看到
+# 至少一轮 ping/tcp/udp/http 事件。
+
+# 调度器轮询间隔
+check_interval: 1s
+
+# 事件 channel 缓冲
+event_buffer_size: 1024
+
+# 不启用 admin server，保持 demo 简洁
+admin_addr: ""
+
+# 仅 console 输出，方便跟日志对照
+outputs:
+  - type: console
+
+# P1.1 拨测任务集：ping(命令后端) / tcp / udp / http 各一个
+pings:
+  - task_id: 1001
+    enabled: true
+    period: 5s
+    timeout: 3s
+    target: "127.0.0.1"
+    backend: "command"
+    count: 1
+    payload_size: 56
+    max_rtt: 1s
+    send_interval: 200ms
+
+tcps:
+  - task_id: 1002
+    enabled: true
+    period: 5s
+    timeout: 3s
+    address: "127.0.0.1:9999"
+
+udps:
+  - task_id: 1003
+    enabled: true
+    period: 5s
+    timeout: 3s
+    address: "127.0.0.1:9998"
+    payload: "monitorbeat-udp-probe"
+    expect_response: false
+
+https:
+  - task_id: 1004
+    enabled: true
+    period: 5s
+    timeout: 3s
+    url: "http://127.0.0.1:8080/"
+    method: "GET"
+    expected_status: 200
