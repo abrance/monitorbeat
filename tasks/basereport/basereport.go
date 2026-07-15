@@ -86,9 +86,13 @@ func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 
 // dimensions 返回事件维度集合：hostname + 启动时确定的 host info。
 func (g *Gather) dimensions() map[string]string {
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "unknown"
+	hostname := os.Getenv("MONITORBEAT_HOSTNAME")
+	if hostname == "" {
+		var err error
+		hostname, err = os.Hostname()
+		if err != nil {
+			hostname = "unknown"
+		}
 	}
 	dims := map[string]string{
 		"hostname": hostname,

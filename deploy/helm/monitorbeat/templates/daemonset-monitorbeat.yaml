@@ -45,6 +45,10 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           env:
+            - name: MONITORBEAT_HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: HOST_PROC
               value: /host/proc
             - name: HOST_SYS

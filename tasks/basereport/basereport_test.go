@@ -66,6 +66,15 @@ func TestGather_Dimensions_Hostname(t *testing.T) {
 	}
 }
 
+func TestGather_Dimensions_UsesEnvHostname(t *testing.T) {
+	t.Setenv("MONITORBEAT_HOSTNAME", "node-a")
+	g := newTestGather()
+	dims := g.dimensions()
+	if dims["hostname"] != "node-a" {
+		t.Fatalf("hostname = %q, want node-a", dims["hostname"])
+	}
+}
+
 // 验证：禁用 mem/disk/load/net 时 metrics 只有 cpu_usage。
 func TestGather_OnlyCpu(t *testing.T) {
 	cfg := &configs.BasereportConfig{
