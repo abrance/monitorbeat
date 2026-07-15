@@ -48,7 +48,7 @@ export default function Probes() {
             </div>
             {ps && ps.duration.length ? (
               <Chart
-                series={[{ metric: 'duration_s', unit: 's', points: ps.duration }]}
+                series={[{ metric: 'duration_ms', unit: 'ms', points: ps.duration }]}
                 height={180}
               />
             ) : (

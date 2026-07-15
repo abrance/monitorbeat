@@ -11,3 +11,7 @@ data:
 {{ toYaml .Values.monitorbeat.config.outputs | indent 6 }}
     basereports:
 {{ toYaml .Values.monitorbeat.config.basereports | indent 6 }}
+    {{- with .Values.monitorbeat.config.pings }}
+    pings:
+{{ toYaml . | indent 6 }}
+    {{- end }}

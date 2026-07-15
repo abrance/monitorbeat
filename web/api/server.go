@@ -298,8 +298,8 @@ type ProbeResult struct {
 
 func probeSeries(ctx context.Context, c *vm.Client, host, kind, from, to, step string) ProbeSeries {
 	m := labelMatch("hostname", host)
-	upExpr := fmt.Sprintf(`avg(probe_up{%s,probe="%s"})`, m, kind)
-	durExpr := fmt.Sprintf(`avg(probe_duration_seconds{%s,probe="%s"})`, m, kind)
+	upExpr := fmt.Sprintf(`avg(success{%s,probe_type="%s"})`, m, kind)
+	durExpr := fmt.Sprintf(`avg(duration_ms{%s,probe_type="%s"})`, m, kind)
 	ps := ProbeSeries{}
 	if up, err := c.QueryRange(ctx, upExpr, from, to, step); err == nil && len(up) > 0 {
 		ps.Up = up[0].Values

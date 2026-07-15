@@ -10,6 +10,8 @@ spec:
       {{- include "monitorbeat.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-monitorbeat.yaml") . | sha256sum }}
       labels:
         app.kubernetes.io/component: beat
         {{- include "monitorbeat.selectorLabels" . | nindent 8 }}
@@ -38,6 +40,10 @@ spec:
         - name: monitorbeat
           image: "{{ .Values.monitorbeat.image }}"
           imagePullPolicy: {{ .Values.monitorbeat.pullPolicy }}
+          securityContext:
+            capabilities:
+              add:
+                - NET_RAW
           args:
             - -config
             - /etc/monitorbeat/config.yaml

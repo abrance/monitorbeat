@@ -12,6 +12,7 @@ import (
 )
 
 func TestEventDataBuildsNormalizedShape(t *testing.T) {
+	t.Setenv("MONITORBEAT_HOSTNAME", "node-a")
 	result := Result{
 		Success:  true,
 		Duration: 1500 * time.Microsecond,
@@ -31,7 +32,7 @@ func TestEventDataBuildsNormalizedShape(t *testing.T) {
 	if !ok {
 		t.Fatalf("dimensions type = %T, want map[string]string", data["dimensions"])
 	}
-	if dims["probe_type"] != "tcp" || dims["target"] != "127.0.0.1:22" || dims["task_id"] != "42" {
+	if dims["hostname"] != "node-a" || dims["probe_type"] != "tcp" || dims["target"] != "127.0.0.1:22" || dims["task_id"] != "42" {
 		t.Fatalf("unexpected dimensions: %+v", dims)
 	}
 	metrics, ok := data["metrics"].(map[string]float64)

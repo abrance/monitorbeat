@@ -42,6 +42,17 @@ monitorbeat:
           enabled: true
         net:
           enabled: true
+    pings:
+      - task_id: 1001
+        enabled: true
+        target: "186.241.120.132"
+        backend: icmp
+        period: 30s
+        timeout: 5s
+        count: 3
+        payload_size: 56
+        max_rtt: 2s
+        send_interval: 200ms
 
 # -- monitorweb (Deployment) — VictoriaMetrics 查询代理 + 前端
 monitorweb:

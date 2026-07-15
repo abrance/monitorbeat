@@ -11,6 +11,8 @@ spec:
       {{- include "monitorbeat.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-monitorweb.yaml") . | sha256sum }}
       labels:
         app.kubernetes.io/component: web
         {{- include "monitorbeat.selectorLabels" . | nindent 8 }}

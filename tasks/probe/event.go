@@ -5,10 +5,22 @@
 package probe
 
 import (
+	"os"
 	"strconv"
 
 	"github.com/abrance/monitorbeat/define"
 )
+
+func sourceHostname() string {
+	if hostname := os.Getenv("MONITORBEAT_HOSTNAME"); hostname != "" {
+		return hostname
+	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "unknown"
+	}
+	return hostname
+}
 
 func BuildEvent(probeType, target string, taskID int32, result Result) define.Event {
 	metrics := make(map[string]float64, len(result.Metrics)+2)
@@ -24,6 +36,7 @@ func BuildEvent(probeType, target string, taskID int32, result Result) define.Ev
 
 	data := map[string]any{
 		"dimensions": map[string]string{
+			"hostname":   sourceHostname(),
 			"probe_type": probeType,
 			"target":     target,
 			"task_id":    strconv.FormatInt(int64(taskID), 10),
