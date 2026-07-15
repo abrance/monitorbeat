@@ -18,30 +18,35 @@ import (
 // backend is neither "icmp" nor "command".
 var errBackendUnsupported = errors.New("ping: command output backend is linux-only")
 
-// linuxStatsLine matches the trailing summary line emitted by `ping(8)` on
-// Linux: "N packets transmitted, M received, K% packet loss, time Tms".
-var linuxStatsLine = regexp.MustCompile(
-	`(?m)^(\d+)\s+packets transmitted,\s+(\d+)\s+received,\s+([\d.]+)%\s+packet loss,\s+time\s+\S+`,
-)
-
-// linuxRTTLine matches the round-trip summary: "rtt min/avg/max/mdev =
-// a/b/c/d ms". Only the first three numbers are meaningful for the probe;
-// mdev is captured but not exposed.
-var linuxRTTLine = regexp.MustCompile(
-	`(?m)^rtt min/avg/max/mdev\s*=\s*([\d.]+)/([\d.]+)/([\d.]+)/[\d.]+\s*ms`,
-)
-
-// linuxPingHeader marks the canonical Linux "PING host (ip) ..." preamble.
-// Its presence is the gate for treating the input as Linux-shaped.
+// linuxPingHeader marks a Linux-shaped `ping` preamble. Both iputils and
+// busybox (Alpine) ping begin with "PING <host> (<ip>)"; iputils follows
+// with "<n>(<m>) bytes of data." while busybox uses ": <n> data bytes".
+// Matching only the stable prefix keeps the parser backend-agnostic.
 var linuxPingHeader = regexp.MustCompile(
-	`(?m)^PING\s+\S+\s+\(\S+\)\s+\d+\(\d+\)\s+bytes of data\.`,
+	`(?m)^PING\s+\S+\s+\(\S+\)`,
+)
+
+// linuxStatsLine matches the trailing summary emitted by both iputils
+// ("3 packets transmitted, 3 received, 0% packet loss") and busybox
+// ("3 packets transmitted, 3 packets received, 0% packet loss"). The
+// optional "packets" before "received" covers the busybox wording.
+var linuxStatsLine = regexp.MustCompile(
+	`(?m)^(\d+)\s+packets transmitted,\s+(\d+)\s+(?:packets\s+)?received,\s+([\d.]+)%\s+packet loss`,
+)
+
+// linuxRTTLine matches the round-trip summary from iputils
+// ("rtt min/avg/max/mdev = a/b/c/d ms") and busybox
+// ("round-trip min/avg/max = a/b/c ms"). Only the first three numbers
+// (min/avg/max) are captured; mdev, when present, is ignored.
+var linuxRTTLine = regexp.MustCompile(
+	`(?m)^(?:rtt|round-trip)\s+min/avg/max(?:/mdev)?\s*=\s*([\d.]+)/([\d.]+)/([\d.]+)`,
 )
 
 // parseCommandOutput converts the stdout of a Linux `ping -c <N> -w <T>`
-// invocation into the canonical ping metric map. The parser is strict
-// about the layout: inputs missing the Linux preamble or stats block
-// produce errBackendUnsupported so the caller can fall back to the ICMP
-// backend instead of emitting misleading zeros.
+// invocation into the canonical ping metric map. The parser accepts both
+// iputils and busybox (Alpine) output layouts; inputs missing the Linux
+// preamble or stats block produce errBackendUnsupported so the caller can
+// fall back to the ICMP backend instead of emitting misleading zeros.
 func parseCommandOutput(output string) (map[string]float64, error) {
 	if !linuxPingHeader.MatchString(output) {
 		return nil, errBackendUnsupported
