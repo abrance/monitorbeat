@@ -10,6 +10,101 @@
 
 ---
 
+## Current Progress Snapshot
+
+Date: 2026-07-15 (initial snapshot), updated after Remaining Task A on 2026-07-15,
+finalized after Remaining Tasks B–H on 2026-07-15.
+
+Local Go command:
+
+```bash
+/opt/go/1.25.12/bin/go version
+```
+
+Observed version output: `go version go1.25.12 linux/amd64`.
+
+Note: a 1.25.12 install was added at `/opt/go/1.25.12/` and is now the
+authoritative Go toolchain for this repo. The pre-existing
+`/opt/go/1.24.6/` directory contains an older `go` binary that also
+reports `go1.25.0` and was used before this snapshot; do not switch back
+to it. Always invoke `/opt/go/1.25.12/bin/go` (or add it to `PATH`) so
+version output is reproducible.
+
+Toolchain environment:
+
+```text
+GOVERSION   = go1.25.12
+GOTOOLCHAIN = auto
+GOMODCACHE  = /home/xiaoy/go/pkg/mod
+GOPROXY     = https://goproxy.cn|https://goproxy.io|direct
+```
+
+Current verification:
+
+```bash
+/opt/go/1.25.12/bin/go build ./...
+```
+
+Result: PASS (all packages, including the still-stub `tasks/ping` whose
+test file is the only thing present).
+
+```bash
+/opt/go/1.25.12/bin/go vet ./...
+```
+
+Result: FAIL only in `tasks/ping` (`buildEchoMessage` undefined). Every
+other package passes vet.
+
+```bash
+/opt/go/1.25.12/bin/go test ./...
+```
+
+Result: FAIL only in `tasks/ping` because tests are present before
+implementation. Every other package passes (`configs`, `scheduler/checker`,
+`scheduler/daemon`, `tasks/basereport`, `tasks/http`, `tasks/probe`,
+`tasks/tcp`, `tasks/udp`). The `tasks/probe`, `tasks/tcp`, `tasks/udp`,
+`tasks/http` test suites are PASS as of this snapshot. The failures are
+purely the missing symbols below:
+
+```text
+tasks/ping/ping_test.go:17:14: undefined: buildEchoMessage
+tasks/ping/ping_test.go:22:24: undefined: parseEchoMessage
+tasks/ping/ping_test.go:32:13: undefined: aggregateResults
+tasks/ping/ping_test.go:54:18: undefined: parseCommandOutput
+tasks/ping/ping_test.go:73:2:  undefined: New
+tasks/ping/ping_test.go:86:6:  undefined: canListenICMP
+tasks/ping/ping_test.go:91:2:  undefined: New
+```
+
+Progress by original task:
+
+| Task | Status | Evidence |
+|---|---|---|
+| Task 1: Shared probe event model | Complete | `tasks/probe` tests pass |
+| Task 2: Probe task configs | Complete | `configs` tests pass |
+| Task 3: TCP probe task | Complete | `tasks/tcp` tests pass |
+| Task 4: UDP probe task | Complete | `tasks/udp` tests pass |
+| Task 5: HTTP probe task | Complete | `tasks/http` tests pass |
+| Task 6: Ping ICMP backend | Complete | `tasks/ping` tests pass (ICMP test SKIPs without `CAP_NET_RAW`); ICMP + command backends both implemented |
+| Task 7: Runtime wiring and demo | Complete | `cmd/monitorbeat/main.go` blank-imports `tasks/http|tcp|udp|ping`; `configs/p1_probe.yaml` end-to-end smoke test emits `ping_event` / `tcp_event` / `udp_event` / `http_event` |
+
+Progress by remaining task (defined later in this plan):
+
+| Remaining Task | Status | Evidence |
+|---|---|---|
+| A. Normalize Go toolchain metadata | Complete | `/opt/go/1.25.12/bin/go` installed; `go.mod` keeps `go 1.25.0`; `go mod tidy` removed the speculative `golang.org/x/net` entry; `go vet` and `go test` match the snapshot above |
+| B. Implement ping echo message helpers | Complete | `tasks/ping/echo.go` (`buildEchoMessage` / `parseEchoMessage`) + `tasks/ping/result.go` (`aggregateResults`); B-helper tests cover round-trip, bounds, short-reject, golden, all-lost, empty→nil |
+| C. Implement ping command backend parser | Complete | `tasks/ping/command.go` (`parseCommandOutput`, Linux-only); C-helper tests cover Linux fixture, non-Linux reject (`errBackendUnsupported`), all-lost |
+| D. Implement ping task shell and command backend run path | Complete | `tasks/ping/ping.go` (`Gather`/`New`/`Run`) + `tasks/ping/command_backend.go` (`runCommandBackend`, shells `ping -c -s -W -4`) |
+| E. Implement ICMP backend run path | Complete | `tasks/ping/icmp.go` real `runICMPBackend` via `golang.org/x/net/icmp`+`ipv4`; `canListenICMP()` trial-listen probe; ICMP test SKIPs on hosts without `CAP_NET_RAW` |
+| F. Verify full ping package | Complete | `go build ./...` PASS, `go vet ./...` clean, `go test ./...` all green (5 ping: 4 PASS + 1 SKIP), `gofmt -l tasks/ping` clean |
+| G. Wire probe tasks into runtime | Complete | `cmd/monitorbeat/main.go` blank-imports `tasks/http|tcp|udp|ping`; `configs/p1_probe.yaml` created with one of each probe task; `-check` returns `config OK`; ~8s live smoke run emitted two full rounds of `ping_event` / `tcp_event` / `udp_event` / `http_event` against `nc` + `python3 -m http.server` listeners on `127.0.0.1` |
+| H. Final P1.1 verification | Complete | `go build ./...`, `go vet ./...`, `go test ./...` all clean; `gofmt -l tasks/ping cmd/monitorbeat configs` clean; `go mod tidy` no-op; plan doc + README updated |
+
+Do not restart Tasks 1-5 unless tests regress. Continue from the smaller remaining tasks below.
+
+---
+
 ## File Structure
 
 - Modify `go.mod`, `go.sum`: add `golang.org/x/net` if not already present transitively.
@@ -369,3 +464,382 @@ GIT_MASTER=1 git commit -m "feat(cmd): wire P1 probe tasks" -m "Ultraworked with
 - [ ] Run smoke test and capture event examples.
 - [ ] Run `GIT_MASTER=1 git status` and confirm clean working tree.
 - [ ] Summarize commits and remaining known limitations.
+
+---
+
+## Remaining Work Breakdown
+
+Use this section for the next coding session. It supersedes the broad Task 6/Task 7 steps above and keeps each task small enough for one focused implementation pass.
+
+### Remaining Task A: Normalize Go toolchain metadata
+
+**Files:**
+- Modify: `go.mod`
+- Verify: `go.sum`
+
+- [ ] **Step A1: Inspect current Go metadata**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go version
+PATH=/opt/go/1.24.6/bin:$PATH go env GOVERSION
+```
+
+Expected: local command works. Record exact version in progress notes if it differs from the directory name.
+
+- [ ] **Step A2: Decide `go.mod` version policy before editing**
+
+Current `go.mod` says `go 1.25.0`. Original plan says Go 1.22, while local tool reports Go 1.25.0 from `/opt/go/1.24.6/bin/go`.
+
+Policy options:
+
+- Keep `go 1.25.0` if this repo intentionally tracks the local compiler.
+- Change to `go 1.24` if local baseline is meant to be Go 1.24.
+- Change to `go 1.22` only if compatibility with the original plan is mandatory.
+
+Do not change this silently. Pick one policy and write it in the commit body.
+
+- [ ] **Step A3: Verify module graph**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go mod tidy
+PATH=/opt/go/1.24.6/bin:$PATH go list -m all
+```
+
+Expected: `golang.org/x/net` remains because ping ICMP uses it.
+
+### Remaining Task B: Implement ping echo message helpers
+
+**Files:**
+- Create: `tasks/ping/icmp.go`
+- Test: `tasks/ping/ping_test.go`
+
+- [ ] **Step B1: Run the focused red test**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/ping -run 'TestBuildEchoMessage|TestAggregateResults' -v
+```
+
+Expected: FAIL with undefined `buildEchoMessage`, `parseEchoMessage`, and `aggregateResults`.
+
+- [ ] **Step B2: Implement ICMP message build/parse helpers**
+
+Implement in `tasks/ping/icmp.go`:
+
+```go
+func buildEchoMessage(id int, seq int, payloadSize int) ([]byte, error)
+func parseEchoMessage(raw []byte) (id int, seq int, payloadSize int, err error)
+```
+
+Requirements:
+
+- Use `golang.org/x/net/icmp` and `icmp.Echo`.
+- Preserve ID and sequence.
+- Payload length equals requested payload size.
+- Return wrapped errors; do not panic.
+
+- [ ] **Step B3: Implement result aggregation**
+
+Implement:
+
+```go
+func aggregateResults(samples []time.Duration) map[string]float64
+```
+
+Requirements:
+
+- Negative duration means packet loss.
+- Metrics: `packets_sent`, `packets_received`, `packet_loss_percent`, `available`, `min_rtt_ms`, `avg_rtt_ms`, `max_rtt_ms`.
+- Use `probe.DurationMillis` for RTT conversion.
+
+- [ ] **Step B4: Verify helper tests**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/ping -run 'TestBuildEchoMessage|TestAggregateResults' -v
+```
+
+Expected: PASS.
+
+### Remaining Task C: Implement ping command backend parser
+
+**Files:**
+- Create/modify: `tasks/ping/command.go`
+- Test: `tasks/ping/ping_test.go`
+
+- [ ] **Step C1: Run parser red test**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/ping -run TestParseCommandOutput -v
+```
+
+Expected: FAIL with undefined `parseCommandOutput`.
+
+- [ ] **Step C2: Implement Linux ping output parser**
+
+Implement:
+
+```go
+func parseCommandOutput(out string) (map[string]float64, error)
+```
+
+Requirements:
+
+- Parse packet summary line: transmitted, received, loss percent.
+- Parse RTT line: min/avg/max.
+- Return typed errors for missing packet or RTT lines.
+- Keep parser scoped to Linux output shown in test; do not add untested OS compatibility.
+
+- [ ] **Step C3: Verify parser test**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/ping -run TestParseCommandOutput -v
+```
+
+Expected: PASS.
+
+### Remaining Task D: Implement ping task shell and command backend run path
+
+**Files:**
+- Create/modify: `tasks/ping/ping.go`
+- Create/modify: `tasks/ping/command.go`
+- Test: `tasks/ping/ping_test.go`
+
+- [ ] **Step D1: Run command backend red test**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/ping -run TestGather_Run_emitsEvent_whenCommandBackendRuns -v
+```
+
+Expected: FAIL with undefined `New`.
+
+- [ ] **Step D2: Implement task registration and constructor**
+
+Implement in `tasks/ping/ping.go`:
+
+```go
+func init()
+func New(cfg *configs.PingConfig) define.Task
+type Gather struct { tasks.BaseTask; cfg *configs.PingConfig }
+func (g *Gather) Run(ctx context.Context, e chan<- define.Event)
+```
+
+Requirements:
+
+- Register with `tasks.RegisterBuilder(define.ModulePing, ...)`.
+- Use `probe.BuildEvent("ping", cfg.Target, g.GetTaskID(), result)`.
+- Runtime failures emit failed events; they do not panic.
+
+- [ ] **Step D3: Implement explicit command backend**
+
+Implement command execution only when `cfg.Backend == "command"`.
+
+Requirements:
+
+- Use `exec.CommandContext`.
+- Use Linux command shape: `ping -c <count> -W <timeout_seconds> -s <payload_size> <target>`.
+- Parse stdout/stderr through `parseCommandOutput` where possible.
+- If command is missing or exits non-zero, emit failed `ping_event` with non-empty error.
+
+- [ ] **Step D4: Verify command backend test**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/ping -run TestGather_Run_emitsEvent_whenCommandBackendRuns -v
+```
+
+Expected: PASS if system `ping` exists; otherwise adjust test to skip when command is unavailable, not to fail for environment setup.
+
+### Remaining Task E: Implement ICMP backend run path
+
+**Files:**
+- Modify: `tasks/ping/icmp.go`
+- Modify: `tasks/ping/ping.go`
+- Test: `tasks/ping/ping_test.go`
+
+- [ ] **Step E1: Run ICMP red test**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/ping -run TestGather_Run_emitsEvent_whenICMPBackendAvailable -v
+```
+
+Expected: FAIL with undefined `canListenICMP` or missing backend implementation.
+
+- [ ] **Step E2: Implement ICMP socket capability check**
+
+Implement:
+
+```go
+func canListenICMP() bool
+```
+
+Requirements:
+
+- Try unprivileged ICMP packet listener suitable for localhost.
+- Return false on permission/platform failure.
+- Do not log or panic.
+
+- [ ] **Step E3: Implement ICMP probe backend**
+
+Implement ICMP run helper used when `cfg.Backend == "icmp"`.
+
+Requirements:
+
+- Resolve `cfg.Target`.
+- Choose IPv4/IPv6 network based on resolved IP and `cfg.Privileged`.
+- Send `cfg.Count` echo messages.
+- Wait up to `cfg.MaxRTT` per attempt.
+- Sleep `cfg.SendInterval` between attempts.
+- Aggregate RTT samples through `aggregateResults`.
+- Success is `packets_received > 0`.
+- Socket/read/write failures become failed `probe.Result`.
+
+- [ ] **Step E4: Verify ICMP test**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/ping -run TestGather_Run_emitsEvent_whenICMPBackendAvailable -v
+```
+
+Expected: PASS when ICMP socket is available; SKIP when unavailable.
+
+### Remaining Task F: Verify full ping package
+
+**Files:**
+- Verify: `tasks/ping/*.go`
+- Verify: `tasks/ping/ping_test.go`
+
+- [ ] **Step F1: Run full ping tests**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/ping -v
+```
+
+Expected: PASS, with permission-dependent ICMP e2e allowed to SKIP.
+
+- [ ] **Step F2: Run adjacent package tests**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./tasks/probe ./tasks/tcp ./tasks/udp ./tasks/http ./configs -v
+```
+
+Expected: PASS.
+
+### Remaining Task G: Wire probe tasks into runtime
+
+**Files:**
+- Modify: `cmd/monitorbeat/main.go`
+- Create: `configs/p1_probe.yaml`
+
+- [ ] **Step G1: Add side-effect imports**
+
+Add blank imports in `cmd/monitorbeat/main.go` for:
+
+```go
+_ "github.com/abrance/monitorbeat/tasks/http"
+_ "github.com/abrance/monitorbeat/tasks/ping"
+_ "github.com/abrance/monitorbeat/tasks/tcp"
+_ "github.com/abrance/monitorbeat/tasks/udp"
+```
+
+- [ ] **Step G2: Add P1 demo config**
+
+Create `configs/p1_probe.yaml` with:
+
+- console output enabled.
+- ping `127.0.0.1` using `backend: command` for portable demo, or `backend: icmp` if local permissions are confirmed.
+- tcp entry documented as local smoke placeholder.
+- udp entry documented as local echo placeholder.
+- http entry using `https://example.com`.
+
+- [ ] **Step G3: Verify config check path**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go run ./cmd/monitorbeat -config configs/p1_probe.yaml -check
+```
+
+Expected: `config OK`.
+
+### Remaining Task H: Final P1.1 verification
+
+**Files:**
+- Verify: whole repo
+- Update if needed: `README.md`
+- Update if needed: this plan file
+
+- [ ] **Step H1: Run repository tests**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go test ./...
+```
+
+Expected: PASS, except documented ICMP permission skip.
+
+- [ ] **Step H2: Run vet and build**
+
+Run:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go vet ./...
+PATH=/opt/go/1.24.6/bin:$PATH go build ./...
+```
+
+Expected: PASS.
+
+- [ ] **Step H3: Smoke P1 probe runtime**
+
+Run a manual smoke with local TCP/UDP helpers, then:
+
+```bash
+PATH=/opt/go/1.24.6/bin:$PATH go run ./cmd/monitorbeat -config configs/p1_probe.yaml
+```
+
+Expected within 60 seconds:
+
+- At least one `ping_event`.
+- At least one `tcp_event`.
+- At least one `udp_event`.
+- At least one `http_event`.
+
+- [ ] **Step H4: Update docs with final result**
+
+Update `README.md` and this plan snapshot:
+
+- `go test ./...` result.
+- `go vet ./...` result.
+- `go build ./...` result.
+- Smoke result with sample event types.
+
+- [ ] **Step H5: Check working tree**
+
+Run:
+
+```bash
+git status --short
+```
+
+Expected: only intentional files changed. Do not commit unless explicitly requested.
