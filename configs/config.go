@@ -58,6 +58,8 @@ type OutputConfig struct {
 // map[string]any, then calls Clean() to fill defaults and validate.
 type HTTPOutputConfig struct {
 	URL                string            `yaml:"url" json:"url"`
+	Method             string            `yaml:"method" json:"method"`
+	Format             string            `yaml:"format" json:"format"` // "json" | "victoriametrics" | "doris"
 	Timeout            time.Duration     `yaml:"timeout" json:"timeout"`
 	RetryMax           int               `yaml:"retry_max" json:"retry_max"`
 	Headers            map[string]string `yaml:"headers" json:"headers"`
@@ -80,6 +82,16 @@ type HTTPAuthConfig struct {
 func (c *HTTPOutputConfig) Clean() error {
 	if c.URL == "" {
 		return fmt.Errorf("http output: url is required")
+	}
+	if c.Method == "" {
+		if c.Format == "doris" {
+			c.Method = "PUT"
+		} else {
+			c.Method = "POST"
+		}
+	}
+	if c.Format == "" {
+		c.Format = "json"
 	}
 	if c.Timeout <= 0 {
 		c.Timeout = 5 * time.Second
