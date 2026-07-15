@@ -85,7 +85,7 @@ P1.3 模块详情：
 - `gofmt -l tasks/script configs internal/script cmd/monitorbeat internal/output`：clean
 - P1.1 端到端冒烟：`configs/p1_probe.yaml` + 本地 `nc` / `python3 -m http.server`，`monitorbeat -check` 返回 `config OK`，console 打印 `ping_event` / `tcp_event` / `udp_event` / `http_event` 四类事件
 - P1.2 端到端冒烟：`configs/p1_keyword.yaml` tail `/tmp/demo.log`，regex `ERROR payment_id=(\d+) amount=(\d+\.\d+)`，5 条 `raw_log` 事件全部命中，fields 包含 `payment_id` / `amount`
-- P1.3 端到端冒烟：`configs/p1_script.yaml` echo prometheus 指标，2 条 `script_event` 命中，metrics 包含 `demo_total=42` + `cost_ms`
+- P1.3 端到端冒烟：`configs/p1_script.yaml` echo prometheus 指标，3 条 `script_event` 命中（5s period × 12s），metrics 包含 `demo_total=42` + `cost_ms`，dimensions 包含 `command` + `env` + `task_id`
 - P1.4 端到端冒烟：`configs/p1_http.yaml` 成功路径（python HTTP sink 200）收 3 POST，header `Content-Type: application/json; charset=utf-8` + 自定义 `X-Source: monitorbeat-p14`；失败路径（9999 关闭）→ `/tmp/p14-fallback.jsonl` 写入 3 行合法 JSONL
 
 ## P1.1 拨测快速演示
