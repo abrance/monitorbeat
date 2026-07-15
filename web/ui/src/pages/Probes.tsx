@@ -36,9 +36,9 @@ export default function Probes() {
 
       {(['ping', 'tcp', 'http'] as const).map((kind) => {
         const ps = probes.data?.[kind]
-        const hasUp = ps && ps.up.length > 0
-        const upPct = hasUp
-          ? (ps!.up.filter((p: Point) => p[1] === 1).length / ps!.up.length) * 100
+        const upArr = ps?.up
+        const upPct = upArr?.length
+          ? (upArr.filter((p: Point) => p[1] === 1).length / upArr.length) * 100
           : undefined
         return (
           <section className="panel" key={kind}>
@@ -46,7 +46,7 @@ export default function Probes() {
             <div className="stat-row">
               <StatCard label="Success" value={upPct} unit="%" />
             </div>
-            {ps && ps.duration.length ? (
+            {ps?.duration?.length ? (
               <Chart
                 series={[{ metric: 'duration_ms', unit: 'ms', points: ps.duration }]}
                 height={180}

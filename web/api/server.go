@@ -300,7 +300,10 @@ func probeSeries(ctx context.Context, c *vm.Client, host, kind, from, to, step s
 	m := labelMatch("hostname", host)
 	upExpr := fmt.Sprintf(`avg(success{%s,probe_type="%s"})`, m, kind)
 	durExpr := fmt.Sprintf(`avg(duration_ms{%s,probe_type="%s"})`, m, kind)
-	ps := ProbeSeries{}
+	ps := ProbeSeries{
+		Up:       []vm.Point{},
+		Duration: []vm.Point{},
+	}
 	if up, err := c.QueryRange(ctx, upExpr, from, to, step); err == nil && len(up) > 0 {
 		ps.Up = up[0].Values
 	}
