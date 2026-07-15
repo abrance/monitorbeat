@@ -17,29 +17,31 @@
 
 ## Current Progress Snapshot
 
-Date: 2026-07-15 — initial snapshot, P1.1 (probe) finalized; P1.2 not yet started.
+Date: 2026-07-15 — P1.2 keyword raw_log harvester COMPLETE.
 
 Local Go command: `/opt/go/1.25.12/bin/go` (reports `go1.25.12 linux/amd64`).
 
 Toolchain env: `GOTOOLCHAIN=auto`, `GOMODCACHE=/home/xiaoy/go/pkg/mod`, `GOPROXY=https://goproxy.cn|https://goproxy.io|direct`.
 
-Current verification (before P1.2 starts):
+Final verification (P1.2 complete):
 - `go build ./...` PASS
 - `go vet ./...` clean
-- `go test ./...` all green
+- `go test ./...` all green (16 packages)
+- `gofmt -l` clean across all new packages
+- Smoke test: 5 raw_log events confirmed
 
 Progress by remaining task:
 
-| Remaining Task | Status |
-|---|---|
-| A. KeywordConfig type + Config wiring | Pending |
-| B. Raw event helper (`tasks/keyword/raw_event.go`) | Pending |
-| C. `internal/regexp/extract` capture helper | Pending |
-| D. `internal/input/file` harvester (single file, append-only) | Pending |
-| E. `scheduler/keyword` scheduler (long-running per task) | Pending |
-| F. `tasks/keyword/keyword.go` task wiring + builder | Pending |
-| G. End-to-end demo (`configs/p1_keyword.yaml` + `-check` + live smoke) | Pending |
-| H. Final P1.2 verification | Pending |
+| Remaining Task | Status | Evidence |
+|---|---|---|
+| A. KeywordConfig type + Config wiring | Complete | configs tests pass (TestKeywordConfig_CleanDefaults + TestConfig_KeywordGrouping) |
+| B. Raw event helper (`tasks/keyword/raw_event.go`) | Complete | TestBuildRawLogEvent_Shape + TestBuildRawLogEvent_NilCaptures PASS |
+| C. `internal/regexp/extract` capture helper | Complete | 5 test cases all PASS (named/unnamed/mixed/no_match/zero_capture) |
+| D. `internal/input/file` harvester (single file, append-only) | Complete | 3 test cases all PASS (FromBegin/AppendAndCancel/ContextCancel) |
+| E. `scheduler/keyword` scheduler (long-running per task) | Complete | 3 test cases all PASS (StartsAndStops/IsDaemon/StopExitsRun) |
+| F. `tasks/keyword/keyword.go` task wiring + builder | Complete | EndToEnd + InvalidConfig + ExtractLine tests PASS |
+| G. End-to-end demo (`configs/p1_keyword.yaml` + `-check` + live smoke) | Complete | -check → config OK; 5 raw_log events with correct fields |
+| H. Final P1.2 verification | Complete | build/vet/test/fmt all clean; smoke confirmed; README updated |
 
 ## File Structure
 
