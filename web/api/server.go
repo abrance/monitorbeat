@@ -11,24 +11,29 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/abrance/monitorbeat/web/alerts"
 	"github.com/abrance/monitorbeat/web/config"
 	"github.com/abrance/monitorbeat/web/vm"
 )
 
 // Server 持有配置与 VM 客户端。
 type Server struct {
-	cfg *config.WebConfig
-	vm  *vm.Client
+	cfg   *config.WebConfig
+	vm    *vm.Client
+	store *alerts.Store
 }
 
 // NewServer 构造 monitorweb 的 HTTP handler。
 //
 // 路由：/api/v1/* 全部优先匹配，最后注册 "/" 托管前端静态资源。
-func NewServer(cfg *config.WebConfig, client *vm.Client) http.Handler {
-	s := &Server{cfg: cfg, vm: client}
+func NewServer(cfg *config.WebConfig, client *vm.Client, store *alerts.Store) http.Handler {
+	s := &Server{cfg: cfg, vm: client, store: store}
+	ah := &alertHandler{store: store}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/healthz", s.handleHealthz)
 	mux.HandleFunc("/api/v1/hosts", s.handleHosts)
@@ -37,6 +42,37 @@ func NewServer(cfg *config.WebConfig, client *vm.Client) http.Handler {
 	mux.HandleFunc("/api/v1/metrics/names", s.handleMetricNames)
 	mux.HandleFunc("/api/v1/events", s.handleEvents)
 	mux.HandleFunc("/api/v1/probes", s.handleProbes)
+
+	mux.HandleFunc("/api/v1/alerts/rules", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			ah.listRules(w, r)
+		case http.MethodPost:
+			ah.createRule(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/api/v1/alerts/rules/", func(w http.ResponseWriter, r *http.Request) {
+		idStr := strings.TrimPrefix(r.URL.Path, "/api/v1/alerts/rules/")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid rule id", http.StatusBadRequest)
+			return
+		}
+		switch r.Method {
+		case http.MethodPut:
+			ah.updateRule(w, r, id)
+		case http.MethodDelete:
+			ah.deleteRule(w, r, id)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	mux.HandleFunc("/api/v1/alerts/acknowledge", ah.acknowledge)
+	mux.HandleFunc("/api/v1/alerts/history", ah.listHistory)
+	mux.HandleFunc("/api/v1/alerts/status", ah.status)
+
 	mux.Handle("/", http.FileServer(http.Dir(cfg.UIDir)))
 	return recovery(mux)
 }

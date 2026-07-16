@@ -3,3 +3,16 @@ victoriametrics:
   url: "http://vmtest-1-victoria-metrics-cluster-vmselect.bkbase-test.svc.cluster.local:8481/select/0/prometheus"
   timeout: 15s
 ui_dir: "./web/ui/dist"
+
+alerts:
+  eval_interval: 60s
+  db_path: "./data/alerts.db"
+
+smtp:
+  host: ""
+  port: 587
+  username: ""
+  password: ""
+  from: ""
+  to: []
+  insecure: false

@@ -7,6 +7,8 @@ export function Nav() {
       <nav className="nav-links">
         <NavLink to="/">Overview</NavLink>
         <NavLink to="/probes">Probes</NavLink>
+        <NavLink to="/alerts">Alerts</NavLink>
+        <NavLink to="/alerts/history">History</NavLink>
       </nav>
     </header>
   )

@@ -17,7 +17,26 @@ import (
 type WebConfig struct {
 	Listen          string          `yaml:"listen"`
 	VictoriaMetrics VictoriaMetrics `yaml:"victoriametrics"`
+	Alert           AlertConfig     `yaml:"alerts"`
+	SMTP            SMTPConfig      `yaml:"smtp"`
 	UIDir           string          `yaml:"ui_dir"`
+}
+
+// AlertConfig 配置告警引擎。
+type AlertConfig struct {
+	EvalInterval time.Duration `yaml:"eval_interval"`
+	DBPath       string        `yaml:"db_path"`
+}
+
+// SMTPConfig 配置邮件发送。
+type SMTPConfig struct {
+	Host     string   `yaml:"host"`
+	Port     int      `yaml:"port"`
+	Username string   `yaml:"username"`
+	Password string   `yaml:"password"`
+	From     string   `yaml:"from"`
+	To       []string `yaml:"to"`
+	Insecure bool     `yaml:"insecure"`
 }
 
 // VictoriaMetrics 配置 VM 查询后端地址。
@@ -52,6 +71,12 @@ func (c *WebConfig) Clean() error {
 	}
 	if c.VictoriaMetrics.Timeout <= 0 {
 		c.VictoriaMetrics.Timeout = 10 * time.Second
+	}
+	if c.Alert.EvalInterval <= 0 {
+		c.Alert.EvalInterval = 60 * time.Second
+	}
+	if c.Alert.DBPath == "" {
+		c.Alert.DBPath = "./data/alerts.db"
 	}
 	if c.UIDir == "" {
 		c.UIDir = "./web/ui/dist"
