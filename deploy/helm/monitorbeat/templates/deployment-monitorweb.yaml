@@ -27,6 +27,8 @@ spec:
         - name: config
           configMap:
             name: {{ include "monitorbeat.fullname" . }}-web
+        - name: data
+          emptyDir: {}
       containers:
         - name: monitorweb
           image: "{{ .Values.monitorweb.image }}"
@@ -42,4 +44,6 @@ spec:
               mountPath: /etc/monitorweb/config.yaml
               subPath: web.yaml
               readOnly: true
+            - name: data
+              mountPath: /data
           resources: {{ toYaml .Values.monitorweb.resources | nindent 12 }}

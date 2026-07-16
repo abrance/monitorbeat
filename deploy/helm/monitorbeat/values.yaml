@@ -77,10 +77,12 @@ monitorweb:
       url: "http://vmtest-1-victoria-metrics-cluster-vmselect.bkbase-test.svc.cluster.local:8481/select/0/prometheus"
       timeout: 15s
     ui_dir: "/usr/local/share/monitorweb/ui"
+    alerts:
+      db_path: "/data/alerts.db"
 
-# -- monitorweb Ingress (Traefik + cert-manager)
+  # -- monitorweb Ingress (Traefik + cert-manager)
   ingress:
-    enabled: false
+    enabled: true
     host: monitorbeat.xiaoyxq.top
     # tlsSecretName: ""  # 默认由 host 自动生成：host 点转横线 + "-tls"
     annotations: {}
