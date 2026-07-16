@@ -256,8 +256,35 @@ Base `/api/v1`：
 | `GET /events?host=&type=&from=&to=&step=` | 异常/事件计数时序 |
 | `GET /probes?host=&from=&to=&step=` | ping/tcp/http 成功率 + 延迟 |
 | `GET /healthz` | 健康检查 |
+| `GET /alerts/rules` | 告警规则列表 |
+| `POST /alerts/rules` | 创建告警规则 |
+| `PUT /alerts/rules/:id` | 更新告警规则 |
+| `DELETE /alerts/rules/:id` | 删除告警规则 |
+| `GET /alerts/status` | 告警状态概览（firing/acknowledged 计数） |
+| `GET /alerts/history?rule_id=&hostname=&state=&limit=&offset=` | 告警历史（分页） |
+| `POST /alerts/acknowledge` | 确认告警（可选静默时长） |
 
 完整设计见 [web 服务设计文档](./docs/web-service-design.md)。
+
+### 主机详情页指标搜索
+
+主机详情页 `/#/host/:hostname` 新增 **搜索框 + 指标列表** 交互，替代原先平铺显示前 48 个指标 chip 的方式。
+
+- 实时输入过滤（大小写不敏感）
+- 显示已选指标数 / 总数
+- 可滚动列表（最多 200 个），搜索自动缩小范围
+
+### 告警引擎（P3）
+
+内置告警引擎已实现并部署：
+
+- **规则管理**：通过 API 或 Web UI 创建阈值告警规则（gt/lt + 持续时长）
+- **状态机**：ok → pending（持续中）→ firing（已触发）→ recovered（已恢复）
+- **评估周期**：60s（可配置），查询 VictoriaMetrics 进行阈值判断
+- **邮件通知**：SMTP 配置完成后 firing/recovered 自动推送
+- **确认与静默**：API 支持确认告警，可选静默时长（N 小时内不重复通知）
+- **持久化**：SQLite 存储在 `/data/alerts.db`，PVC 挂载保障 Pod 重启不丢数据
+- **限流**：两次 firing 通知至少间隔 5 分钟
 
 > 说明：指标类（basereport/processbeat/metricbeat/selfstats）完整可视化；
 > 结构化异常明细（exceptionbeat/dmesg/keyword）在 VM 形态下以"计数时序"呈现，

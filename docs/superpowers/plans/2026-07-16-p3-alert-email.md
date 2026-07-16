@@ -1,6 +1,6 @@
 # P3 Alert Engine + Email Notification Implementation Plan
 
-> **For agentic workers:** Use `superpowers/subagent-driven-development` or `superpowers/executing-plans`. Steps use checkbox (`- [ ]`) syntax.
+> **For agentic workers:** Use `superpowers/subagent-driven-development` or `superpowers/executing-plans`. Steps use checkbox (`- [x]`) syntax.
 
 **Goal:** Add alert rule management, threshold-based evaluation, email notification, and alert acknowledgment to monitorweb.
 
@@ -16,9 +16,32 @@
 
 **Spec reference:** `docs/superpowers/specs/2026-07-16-p3-alert-email-design.md`
 
+**Status:** ✅ All 8 tasks completed. Deployed to k3s via `sha-5b310d2`.
+
 ---
 
-### Task 1: Models + Config + Dependency
+### Deployment Notes
+
+- Container image is distroless (no `sh`/`ls`/`tar`), all configuration via ConfigMap
+- `alerts.db` persisted on PVC `monitorbeat-web-data` (hostPath `/opt/k3s/pvc/monitorbeat-web-data/`)
+- SMTP configured with QQ email + authorization code
+- Alert rule created: ICMP unreachable (success < 1) for 5 min → email to 1103098607@qq.com
+
+### Current Status (2026-07-17)
+
+| Component | Status |
+|-----------|--------|
+| Alert engine evaluator | ✅ Running (60s interval) |
+| SQLite store | ✅ 3 tables (rules, history, state) |
+| Alert API (7 endpoints) | ✅ Available at /api/v1/alerts/* |
+| SMTP email | ✅ Configured (QQ 587 STARTTLS) |
+| Alert rule (ICMP 5min) | ✅ Active |
+| PVC persistence | ✅ alerts.db survives pod restart |
+| Metrics search box | ✅ Host detail page filter/search |
+
+---
+
+### Task 1: Models + Config + Dependency ✅
 
 **Files:**
 - Create: `web/alerts/models.go`
@@ -26,14 +49,14 @@
 - Modify: `web/configs/web.yaml`
 - Modify: `go.mod`
 
-- [ ] **Step 1: Add modernc.org/sqlite dependency**
+- [x] **Step 1: Add modernc.org/sqlite dependency**
 
 ```bash
 cd /opt/mystorage/github/monitorbeat
 /opt/go/1.25.12/bin/go get modernc.org/sqlite
 ```
 
-- [ ] **Step 2: Create `web/alerts/models.go`**
+- [x] **Step 2: Create `web/alerts/models.go`**
 
 Package `alerts`. Contains only struct definitions, no logic.
 
@@ -108,7 +131,7 @@ type EmailSender interface {
 }
 ```
 
-- [ ] **Step 3: Update `web/config/config.go` — add AlertConfig and SMTPConfig**
+- [x] **Step 3: Update `web/config/config.go` — add AlertConfig and SMTPConfig**
 
 ```go
 type WebConfig struct {
@@ -145,7 +168,7 @@ if c.Alert.DBPath == "" {
 }
 ```
 
-- [ ] **Step 4: Update `web/configs/web.yaml`**
+- [x] **Step 4: Update `web/configs/web.yaml`**
 
 ```yaml
 alerts:
@@ -162,7 +185,7 @@ smtp:
   insecure: false
 ```
 
-- [ ] **Step 5: Verify build**
+- [x] **Step 5: Verify build**
 
 ```bash
 cd /opt/mystorage/github/monitorbeat
@@ -179,7 +202,7 @@ cd /opt/mystorage/github/monitorbeat
 
 Package `alerts`. All DB operations behind a `Store` struct. No HTTP, no SMTP.
 
-- [ ] **Step 1: Create `web/alerts/store.go`**
+- [x] **Step 1: Create `web/alerts/store.go`**
 
 ```go
 package alerts
@@ -582,7 +605,7 @@ func boolToInt(b bool) int {
 }
 ```
 
-- [ ] **Step 2: Verify build**
+- [x] **Step 2: Verify build**
 
 ```bash
 cd /opt/mystorage/github/monitorbeat
@@ -599,7 +622,7 @@ cd /opt/mystorage/github/monitorbeat
 
 Package `smtp`. Implements `alerts.EmailSender` interface.
 
-- [ ] **Step 1: Create `web/smtp/sender.go`**
+- [x] **Step 1: Create `web/smtp/sender.go`**
 
 ```go
 package smtp
@@ -727,7 +750,7 @@ func (s *Sender) renderBody(rule alerts.AlertRule, hostname string, value float6
 
 Note: `import "time"` needed — add it.
 
-- [ ] **Step 2: Create `web/smtp/sender_test.go`**
+- [x] **Step 2: Create `web/smtp/sender_test.go`**
 
 Test rendering (no actual SMTP call):
 ```go
@@ -756,14 +779,14 @@ func TestRenderBody(t *testing.T) {
 
 Note: Add `import "strings"`.
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 ```bash
 cd /opt/mystorage/github/monitorbeat
 /opt/go/1.25.12/bin/go test ./web/smtp/ -v
 ```
 
-- [ ] **Step 4: Verify build**
+- [x] **Step 4: Verify build**
 
 ```bash
 /opt/go/1.25.12/bin/go build ./web/smtp/ 2>&1
@@ -777,7 +800,7 @@ cd /opt/mystorage/github/monitorbeat
 - Create: `web/api/alerts.go`
 - Modify: `web/api/server.go`
 
-- [ ] **Step 1: Create `web/api/alerts.go`**
+- [x] **Step 1: Create `web/api/alerts.go`**
 
 ```go
 package api
@@ -962,7 +985,7 @@ func (h *alertHandler) badRequest(w http.ResponseWriter, msg string) {
 
 Note: The `states` field on AlertRule is not defined in the struct. I need to add it to the model. Let me handle this in the plan — add `States []AlertState` to `AlertRule` in models.go.
 
-- [ ] **Step 2: Add States field to AlertRule in models.go**
+- [x] **Step 2: Add States field to AlertRule in models.go**
 
 Edit `web/alerts/models.go` — add `States []AlertState` field:
 ```go
@@ -972,7 +995,7 @@ type AlertRule struct {
 }
 ```
 
-- [ ] **Step 3: Register routes in `web/api/server.go`**
+- [x] **Step 3: Register routes in `web/api/server.go`**
 
 Add import for `strconv` if not already present (it's not used currently).
 
@@ -1036,7 +1059,7 @@ type Server struct {
 }
 ```
 
-- [ ] **Step 4: Verify build**
+- [x] **Step 4: Verify build**
 
 ```bash
 /opt/go/1.25.12/bin/go build ./web/api/ 2>&1
@@ -1051,7 +1074,7 @@ type Server struct {
 - Create: `web/alerts/evaluator.go`
 - Create: `web/alerts/evaluator_test.go`
 
-- [ ] **Step 1: Create `web/alerts/evaluator.go`**
+- [x] **Step 1: Create `web/alerts/evaluator.go`**
 
 ```go
 package alerts
@@ -1245,7 +1268,7 @@ func (e *Evaluator) recover(rule AlertRule, hostname string, value float64) {
 }
 ```
 
-- [ ] **Step 2: Build check**
+- [x] **Step 2: Build check**
 
 ```bash
 /opt/go/1.25.12/bin/go build ./web/alerts/ 2>&1
@@ -1258,7 +1281,7 @@ func (e *Evaluator) recover(rule AlertRule, hostname string, value float64) {
 **Files:**
 - Modify: `cmd/monitorweb/main.go`
 
-- [ ] **Step 1: Update `cmd/monitorweb/main.go`**
+- [x] **Step 1: Update `cmd/monitorweb/main.go`**
 
 Changes:
 1. Import `alerts` and `smtp` packages
@@ -1336,7 +1359,7 @@ func (a *vmAdapter) Query(ctx context.Context, expr string) ([]alerts.VectorResu
 }
 ```
 
-- [ ] **Step 2: Verify full build**
+- [x] **Step 2: Verify full build**
 
 ```bash
 /opt/go/1.25.12/bin/go build ./... 2>&1
@@ -1354,7 +1377,7 @@ func (a *vmAdapter) Query(ctx context.Context, expr string) ([]alerts.VectorResu
 - Modify: `web/ui/src/components/Nav.tsx`
 - Modify: `web/ui/src/main.tsx`
 
-- [ ] **Step 1: Add alert types to `web/ui/src/types.ts`**
+- [x] **Step 1: Add alert types to `web/ui/src/types.ts`**
 
 ```typescript
 export interface AlertRule {
@@ -1405,7 +1428,7 @@ export interface AlertStatus {
 }
 ```
 
-- [ ] **Step 2: Add API client calls**
+- [x] **Step 2: Add API client calls**
 
 In `web/ui/src/api/client.ts`:
 ```typescript
@@ -1440,7 +1463,7 @@ Add imports:
 import type { AlertRule, AlertHistoryItem, AlertStatus } from '../types'
 ```
 
-- [ ] **Step 3: Create `web/ui/src/pages/Alerts.tsx`**
+- [x] **Step 3: Create `web/ui/src/pages/Alerts.tsx`**
 
 Rules list page with:
 - Table of rules (name, metric, condition, threshold, status, actions)
@@ -1451,17 +1474,17 @@ Rules list page with:
 
 Full implementation in the actual code — React component with `useAsync` for data, modal for create/edit, inline toggle for enabled.
 
-- [ ] **Step 4: Create `web/ui/src/pages/AlertHistory.tsx`**
+- [x] **Step 4: Create `web/ui/src/pages/AlertHistory.tsx`**
 
 History page with:
 - Table of history items with filters (rule name, hostname, state)
 - Show acknowledge button for un-acked firing items
 
-- [ ] **Step 5: Update `web/ui/src/components/Nav.tsx`**
+- [x] **Step 5: Update `web/ui/src/components/Nav.tsx`**
 
 Add Alerts link with firing count badge.
 
-- [ ] **Step 6: Update `web/ui/src/main.tsx`**
+- [x] **Step 6: Update `web/ui/src/main.tsx`**
 
 Add routes:
 ```tsx
@@ -1473,7 +1496,7 @@ import AlertHistory from './pages/AlertHistory'
 <Route path="/alerts/history" element={<AlertHistory />} />
 ```
 
-- [ ] **Step 7: Build frontend**
+- [x] **Step 7: Build frontend**
 
 ```bash
 cd /opt/mystorage/github/monitorbeat/web/ui
@@ -1484,30 +1507,30 @@ npm run build 2>&1
 
 ### Task 8: Full Build Verification
 
-- [ ] **Step 1: Go build all**
+- [x] **Step 1: Go build all**
 
 ```bash
 /opt/go/1.25.12/bin/go build ./... 2>&1
 ```
 
-- [ ] **Step 2: Go vet**
+- [x] **Step 2: Go vet**
 
 ```bash
 /opt/go/1.25.12/bin/go vet ./... 2>&1
 ```
 
-- [ ] **Step 3: Run Go tests**
+- [x] **Step 3: Run Go tests**
 
 ```bash
 /opt/go/1.25.12/bin/go test ./... 2>&1
 ```
 
-- [ ] **Step 4: Frontend build**
+- [x] **Step 4: Frontend build**
 
 ```bash
 cd /opt/mystorage/github/monitorbeat/web/ui && npm run build 2>&1
 ```
 
-- [ ] **Step 5: LSP diagnostics**
+- [x] **Step 5: LSP diagnostics**
 
 Run `lsp_diagnostics` on changed Go files and frontend files.

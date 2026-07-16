@@ -1,6 +1,6 @@
 # monitorbeat Web 告警策略 + 邮件推送 + 告警确认设计 (P3)
 
-> 状态：设计稿。面向 monitorweb (P3)，在现有 VM 查询代理架构上增加告警引擎。
+> 状态：已实现并部署。面向 monitorweb (P3)，在现有 VM 查询代理架构上增加告警引擎。
 > 不修改 monitorbeat agent 代码。
 
 ## 1. 目标
