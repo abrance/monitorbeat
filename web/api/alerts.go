@@ -136,9 +136,9 @@ type alertStatusItem struct {
 }
 
 type alertStatusResponse struct {
-	FiringCount      int               `json:"firing_count"`
-	AcknowledgedCount int              `json:"acknowledged_count"`
-	Items            []alertStatusItem `json:"items"`
+	FiringCount       int               `json:"firing_count"`
+	AcknowledgedCount int               `json:"acknowledged_count"`
+	Items             []alertStatusItem `json:"items"`
 }
 
 func (h *alertHandler) status(w http.ResponseWriter, r *http.Request) {

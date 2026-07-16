@@ -12,18 +12,18 @@ import (
 
 // AlertRule is a threshold-based alert rule.
 type AlertRule struct {
-	ID          int64       `json:"id"`
-	Name        string      `json:"name"`
-	Enabled     bool        `json:"enabled"`
-	Metric      string      `json:"metric"`      // PromQL metric name
-	Hostname    string      `json:"hostname"`     // "" = all hosts
-	Condition   string      `json:"condition"`    // "gt" or "lt"
-	Threshold   float64     `json:"threshold"`
-	Duration    int64       `json:"duration"`     // seconds condition must persist
-	Description string      `json:"description"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
-	States      []AlertState `json:"states"`      // populated by ListRules
+	ID          int64        `json:"id"`
+	Name        string       `json:"name"`
+	Enabled     bool         `json:"enabled"`
+	Metric      string       `json:"metric"`    // PromQL metric name
+	Hostname    string       `json:"hostname"`  // "" = all hosts
+	Condition   string       `json:"condition"` // "gt" or "lt"
+	Threshold   float64      `json:"threshold"`
+	Duration    int64        `json:"duration"` // seconds condition must persist
+	Description string       `json:"description"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+	States      []AlertState `json:"states"` // populated by ListRules
 }
 
 // HistoryItem is a single alert fire or recover event.
@@ -33,7 +33,7 @@ type HistoryItem struct {
 	RuleName     string    `json:"rule_name"`
 	Hostname     string    `json:"hostname"`
 	MetricValue  float64   `json:"metric_value"`
-	State        string    `json:"state"`        // "firing" | "recovered"
+	State        string    `json:"state"` // "firing" | "recovered"
 	Acknowledged bool      `json:"acknowledged"`
 	TriggeredAt  time.Time `json:"triggered_at"`
 }
@@ -45,11 +45,11 @@ type HistoryItem struct {
 type AlertState struct {
 	RuleID         int64      `json:"-"`
 	Hostname       string     `json:"hostname"`
-	Status         string     `json:"status"`    // "ok" | "pending" | "firing"
+	Status         string     `json:"status"` // "ok" | "pending" | "firing"
 	LastValue      float64    `json:"last_value"`
 	PendingSince   *time.Time `json:"-"`
 	FiringSince    *time.Time `json:"-"`
-	AcknowledgedAt *time.Time `json:"-"`          // non-nil = user acknowledged
+	AcknowledgedAt *time.Time `json:"-"` // non-nil = user acknowledged
 	SilenceUntil   *time.Time `json:"silence_until"`
 	LastNotifiedAt *time.Time `json:"-"`
 }
