@@ -1,10 +1,29 @@
+# GitHub Actions — CI (build/test/lint) + 构建 Docker 镜像并推送到 ghcr.io
+#
+# 触发：
+#   - push to main → build/test/lint + build & push 镜像
+#   - push tag v*  → build/test/lint + build & push 镜像 (semver tag)
+#   - PR           → build/test/lint only (不构建镜像)
+#
+# 产出镜像：
+#   ghcr.io/abrance/monitorbeat:sha-<short>  (agent)
+#   ghcr.io/abrance/monitorweb:sha-<short>   (web dashboard)
+#   ghcr.io/abrance/monitorbeat:latest        (main)
+#   ghcr.io/abrance/monitorweb:latest         (main)
+
 name: monitorbeat CI
 
 on:
   push:
     branches: [main, master]
+    tags: ["v*"]
   pull_request:
     branches: [main, master]
+
+env:
+  REGISTRY: ghcr.io
+  BEAT_IMAGE: ghcr.io/${{ github.repository_owner }}/monitorbeat
+  WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/monitorweb
 
 jobs:
   build-test:
@@ -35,13 +54,56 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: build-test
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t monitorbeat:ci .
+      - name: Docker metadata (monitorbeat)
+        id: meta-beat
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.BEAT_IMAGE }}
+          tags: |
+            type=sha,prefix=sha-,suffix=,format=short
+            type=ref,event=branch,suffix=-branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Verify image size
-        run: |
-          SIZE=$(docker images monitorbeat:ci --format '{{.Size}}')
-          echo "Image size: $SIZE"
+      - name: Docker metadata (monitorweb)
+        id: meta-web
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.WEB_IMAGE }}
+          tags: |
+            type=sha,prefix=sha-,suffix=,format=short
+            type=ref,event=branch,suffix=-branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push monitorbeat
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta-beat.outputs.tags }}
+          labels: ${{ steps.meta-beat.outputs.labels }}
+
+      - name: Build & push monitorweb
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.monitorweb
+          push: true
+          tags: ${{ steps.meta-web.outputs.tags }}
+          labels: ${{ steps.meta-web.outputs.labels }}
