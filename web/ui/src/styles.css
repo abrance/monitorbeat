@@ -170,6 +170,11 @@ a {
   gap: 8px;
 }
 
+.host-stats .stat-card {
+  min-width: 0;
+  padding: 10px 8px;
+}
+
 /* stat cards */
 .stat-row {
   display: flex;
