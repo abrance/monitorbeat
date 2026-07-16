@@ -15,7 +15,12 @@ export default function Probes() {
   const probes = useAsync(
     () => (effectiveHost ? api.probes(effectiveHost, from, to, 60) : Promise.resolve(null)),
     [effectiveHost],
+    30_000, // auto-refresh every 30s
   )
+
+  if (hosts.error) return <div className="error">加载主机列表失败: {hosts.error}</div>
+  if (hosts.loading) return <div className="loading">加载中…</div>
+  if (!hosts.data?.length) return <div className="muted" style={{ padding: '2rem', textAlign: 'center' }}>暂无主机</div>
 
   return (
     <div>

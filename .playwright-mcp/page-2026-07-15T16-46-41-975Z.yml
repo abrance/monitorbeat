@@ -1,0 +1,31 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]: monitorbeat
+    - navigation [ref=e5]:
+      - link "Overview" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+      - link "Probes" [ref=e7] [cursor=pointer]:
+        - /url: "#/probes"
+  - main [ref=e8]:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - heading "Probes" [level=1] [ref=e11]
+        - combobox [ref=e12]
+      - generic [ref=e13]:
+        - heading "PING" [level=2] [ref=e14]
+        - generic [ref=e16]:
+          - generic [ref=e17]: Success
+          - generic [ref=e18]: —
+        - generic [ref=e19]: no probe data
+      - generic [ref=e20]:
+        - heading "TCP" [level=2] [ref=e21]
+        - generic [ref=e23]:
+          - generic [ref=e24]: Success
+          - generic [ref=e25]: —
+        - generic [ref=e26]: no probe data
+      - generic [ref=e27]:
+        - heading "HTTP" [level=2] [ref=e28]
+        - generic [ref=e30]:
+          - generic [ref=e31]: Success
+          - generic [ref=e32]: —
+        - generic [ref=e33]: no probe data

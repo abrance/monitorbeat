@@ -216,7 +216,7 @@ func (s *Server) handleSummary(w http.ResponseWriter, r *http.Request, host stri
 		TS:                  time.Now().Unix(),
 		CPUUsage:            get("cpu_usage"),
 		MemUsedPercent:      get("mem_used_percent"),
-		DiskRootUsedPercent: get("disk___used_percent"),
+		DiskRootUsedPercent: get("disk_root_used_percent"),
 		Load1:               get("load1"),
 		NetBytesRecv:        get("net_bytes_recv"),
 		NetBytesSent:        get("net_bytes_sent"),

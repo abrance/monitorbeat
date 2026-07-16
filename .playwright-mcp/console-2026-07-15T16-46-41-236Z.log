@@ -1,0 +1,23 @@
+[     748ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://monitorbeat.xiaoyxq.top/favicon.ico:0
+[     766ms] [ERROR] TypeError: Cannot read properties of null (reading 'length')
+    at http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:135:33375
+    at Array.map (<anonymous>)
+    at xq (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:135:33314)
+    at pv (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:38:16998)
+    at Kd (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:3139)
+    at Jx (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:44737)
+    at Yx (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:39727)
+    at a$ (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:39655)
+    at ql (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:39508)
+    at rp (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:35875) @ http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:39
+[     767ms] TypeError: Cannot read properties of null (reading 'length')
+    at http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:135:33375
+    at Array.map (<anonymous>)
+    at xq (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:135:33314)
+    at pv (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:38:16998)
+    at Kd (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:3139)
+    at Jx (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:44737)
+    at Yx (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:39727)
+    at a$ (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:39655)
+    at ql (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:39508)
+    at rp (http://monitorbeat.xiaoyxq.top/assets/index-B4Xfk1Yv.js:40:35875)

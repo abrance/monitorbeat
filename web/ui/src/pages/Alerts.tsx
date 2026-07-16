@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { api, useAsync } from '../api/client'
 import type { AlertRule } from '../types'
 
@@ -18,17 +18,12 @@ const emptyForm: RuleForm = {
 }
 
 export default function Alerts() {
-  const rules = useAsync(() => api.alertRules(), [])
+  const { data: rules, loading, error, refetch } = useAsync(() => api.alertRules(), [])
   const [editing, setEditing] = useState<AlertRule | null>(null)
   const [form, setForm] = useState<RuleForm>(emptyForm)
   const [showModal, setShowModal] = useState(false)
   const [ackRule, setAckRule] = useState<{id: number; hostname: string} | null>(null)
   const [ackHours, setAckHours] = useState(0)
-
-  const refresh = useCallback(() => {
-    rules
-    window.location.reload()
-  }, [])
 
   const openCreate = () => {
     setEditing(null)
@@ -57,25 +52,25 @@ export default function Alerts() {
       await api.createAlertRule(form)
     }
     setShowModal(false)
-    refresh()
+    refetch()
   }
 
   const handleDelete = async (id: number) => {
     if (!confirm('确定删除此告警规则？')) return
     await api.deleteAlertRule(id)
-    refresh()
+    refetch()
   }
 
   const handleToggle = async (r: AlertRule) => {
     await api.updateAlertRule(r.id, { ...r, enabled: !r.enabled })
-    refresh()
+    refetch()
   }
 
   const handleAck = async () => {
     if (!ackRule) return
     await api.acknowledgeAlert(ackRule.id, ackRule.hostname, ackHours)
     setAckRule(null)
-    refresh()
+    refetch()
   }
 
   const statusBadge = (r: AlertRule) => {
@@ -88,8 +83,8 @@ export default function Alerts() {
     return <span className="badge" style={{background:'rgba(248,81,73,0.15)',color:'var(--bad)'}}>Firing({n})</span>
   }
 
-  if (rules.error) return <div className="error">加载告警规则失败: {rules.error}</div>
-  if (rules.loading || !rules.data) return <div className="loading">加载中…</div>
+  if (error) return <div className="error">加载告警规则失败: {error}</div>
+  if (loading || !rules) return <div className="loading">加载中…</div>
 
   return (
     <div>
@@ -112,7 +107,7 @@ export default function Alerts() {
           </tr>
         </thead>
         <tbody>
-          {rules.data.map(r => (
+          {rules.map(r => (
             <tr key={r.id}>
               <td>{r.name}</td>
               <td style={{fontFamily:'monospace'}}>{r.metric}</td>
@@ -130,7 +125,10 @@ export default function Alerts() {
                 <button className="btn-sm" onClick={() => openEdit(r)}>编辑</button>
                 <button className="btn-sm btn-danger" onClick={() => handleDelete(r.id)}>删除</button>
                 {r.states?.filter(s => s.status === 'firing' && !s.acknowledged).length > 0 && (
-                  <button className="btn-sm btn-warning" onClick={() => setAckRule({id: r.id, hostname: r.states.find(s => s.status === 'firing' && !s.acknowledged)!.hostname})}>处理中</button>
+                  <button className="btn-sm btn-warning" onClick={() => {
+                    const target = r.states?.find(s => s.status === 'firing' && !s.acknowledged)
+                    if (target) setAckRule({id: r.id, hostname: target.hostname})
+                  }}>处理中</button>
                 )}
               </td>
             </tr>

@@ -1,0 +1,10 @@
+- generic [ref=f1e2]:
+  - banner [ref=f1e3]:
+    - generic [ref=f1e4]: monitorbeat
+    - navigation [ref=f1e5]:
+      - link "Overview" [ref=f1e6] [cursor=pointer]:
+        - /url: "#/"
+      - link "Probes" [ref=f1e7] [cursor=pointer]:
+        - /url: "#/probes"
+  - main [ref=f1e8]:
+    - generic [ref=f1e9]: loading…

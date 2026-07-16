@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type {
   Host,
   Summary,
@@ -91,30 +91,46 @@ async function del(path: string): Promise<void> {
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
 }
 
-export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): AsyncState<T> {
+export function useAsync<T>(
+  fn: () => Promise<T>,
+  deps: unknown[],
+  refetchInterval?: number,
+): AsyncState<T> & { refetch: () => Promise<void> } {
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const execute = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const d = await fn()
+      setData(d)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setLoading(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
+
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    fn()
-      .then((d) => {
-        if (!cancelled) {
-          setData(d)
-          setError(null)
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) setError(String(e))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    execute().catch(() => {})
+    if (refetchInterval && refetchInterval > 0) {
+      const id = setInterval(() => {
+        if (!cancelled) execute().catch(() => {})
+      }, refetchInterval)
+      return () => {
+        cancelled = true
+        clearInterval(id)
+      }
+    }
     return () => {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
-  return { data, error, loading }
+  }, [execute])
+
+  return { data, error, loading, refetch: execute }
 }

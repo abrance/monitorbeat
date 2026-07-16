@@ -4,7 +4,7 @@ import { api, useAsync } from '../api/client'
 import { StatCard } from '../components/StatCard'
 import { Chart } from '../components/Chart'
 
-const DEFAULT_METRICS = ['cpu_usage', 'mem_used_percent', 'disk___used_percent', 'load1']
+const DEFAULT_METRICS = ['cpu_usage', 'mem_used_percent', 'disk_root_used_percent', 'load1']
 
 export default function HostDetail() {
   const { hostname = '' } = useParams()

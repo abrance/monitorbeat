@@ -147,8 +147,8 @@ func (h *alertHandler) status(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	resp := alertStatusResponse{}
-	for _, rule := range rules {
+		resp := alertStatusResponse{Items: []alertStatusItem{}}
+		for _, rule := range rules {
 		for _, st := range rule.States {
 			if st.Status == "firing" {
 				resp.FiringCount++
