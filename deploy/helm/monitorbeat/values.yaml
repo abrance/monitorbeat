@@ -48,10 +48,10 @@ monitorbeat:
         target: "186.241.120.132"
         backend: command
         period: 30s
-        timeout: 5s
+        timeout: 10s
         count: 3
         payload_size: 56
-        max_rtt: 2s
+        max_rtt: 1s
         send_interval: 200ms
 
 # -- monitorweb (Deployment) — VictoriaMetrics 查询代理 + 前端
