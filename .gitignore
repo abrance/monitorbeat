@@ -35,3 +35,18 @@ go.work.sum
 # Web UI build artifacts
 web/ui/node_modules/
 web/ui/dist/
+web/ui/tsconfig.tsbuildinfo
+web/ui/tsconfig.node.tsbuildinfo
+
+# Compiled binaries (built locally)
+/monitorbeat
+/monitorweb
+
+# Playwright MCP debug logs/screenshots
+.playwright-mcp/
+
+# Reasonix session metadata
+.reasonix/
+
+# ZCode plans
+.zcode/
