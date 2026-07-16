@@ -172,26 +172,26 @@ func (s *Store) ListRules() ([]AlertRule, error) {
 	defer rows.Close()
 
 	out := []AlertRule{}
-		for rows.Next() {
-			var r AlertRule
-			var enabled int
-			var created, updated string
-			if err := rows.Scan(
-				&r.ID, &r.Name, &enabled, &r.Metric, &r.Hostname, &r.Condition,
-				&r.Threshold, &r.Duration, &r.Description, &created, &updated,
-			); err != nil {
-				return nil, err
-			}
-			r.Enabled = enabled != 0
-			r.CreatedAt, _ = time.Parse(time.RFC3339, created)
-			r.UpdatedAt, _ = time.Parse(time.RFC3339, updated)
-			r.States = s.getStatesForRule(r.ID)
-			out = append(out, r)
+	for rows.Next() {
+		var r AlertRule
+		var enabled int
+		var created, updated string
+		if err := rows.Scan(
+			&r.ID, &r.Name, &enabled, &r.Metric, &r.Hostname, &r.Condition,
+			&r.Threshold, &r.Duration, &r.Description, &created, &updated,
+		); err != nil {
+			return nil, err
 		}
-		return out, rows.Err()
+		r.Enabled = enabled != 0
+		r.CreatedAt, _ = time.Parse(time.RFC3339, created)
+		r.UpdatedAt, _ = time.Parse(time.RFC3339, updated)
+		r.States = s.getStatesForRule(r.ID)
+		out = append(out, r)
 	}
+	return out, rows.Err()
+}
 
-	// GetEnabledRules returns only enabled rules (for evaluator consumption).
+// GetEnabledRules returns only enabled rules (for evaluator consumption).
 func (s *Store) GetEnabledRules() ([]AlertRule, error) {
 	rows, err := s.db.Query(
 		`SELECT id, name, enabled, metric, hostname, condition, threshold, duration, description, created_at, updated_at
@@ -202,28 +202,28 @@ func (s *Store) GetEnabledRules() ([]AlertRule, error) {
 	}
 	defer rows.Close()
 
-		out := []AlertRule{}
-		for rows.Next() {
-			var r AlertRule
-			var enabled int
-			var created, updated string
-			if err := rows.Scan(
-				&r.ID, &r.Name, &enabled, &r.Metric, &r.Hostname, &r.Condition,
-				&r.Threshold, &r.Duration, &r.Description, &created, &updated,
-			); err != nil {
-				return nil, err
-			}
-			r.Enabled = true
-			r.CreatedAt, _ = time.Parse(time.RFC3339, created)
-			r.UpdatedAt, _ = time.Parse(time.RFC3339, updated)
-			out = append(out, r)
+	out := []AlertRule{}
+	for rows.Next() {
+		var r AlertRule
+		var enabled int
+		var created, updated string
+		if err := rows.Scan(
+			&r.ID, &r.Name, &enabled, &r.Metric, &r.Hostname, &r.Condition,
+			&r.Threshold, &r.Duration, &r.Description, &created, &updated,
+		); err != nil {
+			return nil, err
 		}
-		return out, rows.Err()
+		r.Enabled = true
+		r.CreatedAt, _ = time.Parse(time.RFC3339, created)
+		r.UpdatedAt, _ = time.Parse(time.RFC3339, updated)
+		out = append(out, r)
 	}
+	return out, rows.Err()
+}
 
-	// ---------------------------------------------------------------------------
-	// Alert State
-	// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Alert State
+// ---------------------------------------------------------------------------
 
 func (s *Store) getStatesForRule(ruleID int64) []AlertState {
 	rows, err := s.db.Query(
@@ -236,9 +236,9 @@ func (s *Store) getStatesForRule(ruleID int64) []AlertState {
 	}
 	defer rows.Close()
 
-		out := []AlertState{}
-		for rows.Next() {
-			st := AlertState{RuleID: ruleID}
+	out := []AlertState{}
+	for rows.Next() {
+		st := AlertState{RuleID: ruleID}
 		var hostname, status string
 		var lastValue float64
 		var pendingSince, firingSince, ackAt, silUntil, lastNotif *string
@@ -424,22 +424,22 @@ func (s *Store) ListHistory(ruleID int64, hostname, state string, limit, offset 
 	}
 	defer rows.Close()
 
-		out := []HistoryItem{}
-		for rows.Next() {
-			var h HistoryItem
-			var ack int
-			var triggered string
-			if err := rows.Scan(
-				&h.ID, &h.RuleID, &h.RuleName, &h.Hostname,
-				&h.MetricValue, &h.State, &ack, &triggered,
-			); err != nil {
-				return nil, 0, err
-			}
-			h.Acknowledged = ack != 0
-			h.TriggeredAt, _ = time.Parse(time.RFC3339, triggered)
-			out = append(out, h)
+	out := []HistoryItem{}
+	for rows.Next() {
+		var h HistoryItem
+		var ack int
+		var triggered string
+		if err := rows.Scan(
+			&h.ID, &h.RuleID, &h.RuleName, &h.Hostname,
+			&h.MetricValue, &h.State, &ack, &triggered,
+		); err != nil {
+			return nil, 0, err
 		}
-		return out, total, rows.Err()
+		h.Acknowledged = ack != 0
+		h.TriggeredAt, _ = time.Parse(time.RFC3339, triggered)
+		out = append(out, h)
+	}
+	return out, total, rows.Err()
 }
 
 // ---------------------------------------------------------------------------
