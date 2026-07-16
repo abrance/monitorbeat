@@ -1,6 +1,8 @@
 # monitorbeat Web 服务 + 前端设计（P3）
 
-> 状态：设计 + MVP 实现。数据路径选定 **对接 VictoriaMetrics**，前端 **React + Vite**。
+> 状态：MVP 实现 + 生产化逐步完善。数据路径选定 **对接 VictoriaMetrics**，前端 **React + Vite**。
+> 当前版本：`v0.0.1`。已部署到 k3s（`sha-ade47cd`），通过 Traefik Ingress（TLS）对外暴露。
+> 新增：Alert engine（阈值评估 + SQLite 持久化 + Email 通知），以及后端 API 查询代理 + 静态前端一体托管。
 
 ## 1. 目标
 
