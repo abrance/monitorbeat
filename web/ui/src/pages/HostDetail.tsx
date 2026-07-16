@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api, useAsync } from '../api/client'
 import { StatCard } from '../components/StatCard'
@@ -14,6 +14,7 @@ export default function HostDetail() {
   const from = now - 3600
   const to = now
   const [selected, setSelected] = useState<string[]>(DEFAULT_METRICS)
+  const [searchText, setSearchText] = useState('')
 
   const series = useAsync(
     () => api.range(hostname, selected, from, to, 60),
@@ -29,6 +30,16 @@ export default function HostDetail() {
     setSelected((prev) =>
       prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m],
     )
+
+  const allMetrics = names.data ?? DEFAULT_METRICS
+
+  const filtered = useMemo(
+    () =>
+      searchText
+        ? allMetrics.filter((m) => m.toLowerCase().includes(searchText.toLowerCase()))
+        : allMetrics,
+    [allMetrics, searchText],
+  )
 
   return (
     <div>
@@ -53,8 +64,20 @@ export default function HostDetail() {
 
       <section className="panel">
         <h2>Metrics</h2>
+        <div className="metric-toolbar">
+          <input
+            className="metric-search"
+            type="text"
+            placeholder="Search metrics…"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          <span className="metric-count">
+            {selected.length} / {filtered.length} selected
+          </span>
+        </div>
         <div className="metric-picker">
-          {(names.data ?? DEFAULT_METRICS).slice(0, 48).map((m) => (
+          {filtered.slice(0, 200).map((m) => (
             <label key={m} className={selected.includes(m) ? 'chip active' : 'chip'}>
               <input type="checkbox" checked={selected.includes(m)} onChange={() => toggle(m)} />
               {m}

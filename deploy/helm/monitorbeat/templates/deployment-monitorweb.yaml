@@ -28,7 +28,15 @@ spec:
           configMap:
             name: {{ include "monitorbeat.fullname" . }}-web
         - name: data
+        {{- if .Values.monitorweb.persistence.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.monitorweb.persistence.existingClaim }}
+        {{- else if .Values.monitorweb.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "monitorbeat.fullname" . }}-web-data
+        {{- else }}
           emptyDir: {}
+        {{- end }}
       containers:
         - name: monitorweb
           image: "{{ .Values.monitorweb.image }}"

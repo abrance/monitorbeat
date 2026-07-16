@@ -27,6 +27,16 @@ spec:
         - name: config
           configMap:
             name: {{ include "monitorbeat.fullname" . }}-beat
+        - name: data
+        {{- if .Values.monitorbeat.persistence.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.monitorbeat.persistence.existingClaim }}
+        {{- else if .Values.monitorbeat.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "monitorbeat.fullname" . }}-beat-data
+        {{- else }}
+          emptyDir: {}
+        {{- end }}
         - name: host-proc
           hostPath:
             path: /proc
@@ -67,6 +77,8 @@ spec:
               mountPath: /etc/monitorbeat/config.yaml
               subPath: monitorbeat.yaml
               readOnly: true
+            - name: data
+              mountPath: /data
             - name: host-proc
               mountPath: /host/proc
               readOnly: true

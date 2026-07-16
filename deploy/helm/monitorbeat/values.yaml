@@ -2,7 +2,7 @@
 
 # -- monitorbeat agent (DaemonSet) on each node
 monitorbeat:
-  image: abrance/monitorbeat:latest
+  image: abrance/monitorbeat:sha-336dd00
   pullPolicy: IfNotPresent
   extraArgs: []
   extraEnv: []
@@ -13,6 +13,12 @@ monitorbeat:
     limits:
       cpu: 500m
       memory: 256Mi
+  persistence:
+    enabled: false
+    existingClaim: ""
+    accessMode: ReadWriteOnce
+    size: 2Gi
+    storageClass: "local-path"
   nodeSelector: {}
   tolerations: []
   # monitorbeat 的输出等 YAML 配置
@@ -56,7 +62,7 @@ monitorbeat:
 
 # -- monitorweb (Deployment) — VictoriaMetrics 查询代理 + 前端
 monitorweb:
-  image: abrance/monitorweb:latest
+  image: abrance/monitorweb:sha-336dd00
   pullPolicy: IfNotPresent
   replicas: 1
   service:
@@ -69,6 +75,12 @@ monitorweb:
     limits:
       cpu: 200m
       memory: 128Mi
+  persistence:
+    enabled: false
+    existingClaim: ""
+    accessMode: ReadWriteOnce
+    size: 2Gi
+    storageClass: "local-path"
   nodeSelector: {}
   tolerations: []
   config:
