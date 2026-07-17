@@ -16,16 +16,23 @@ import (
 // WebConfig 是 monitorweb 的运行时配置。
 type WebConfig struct {
 	Listen          string          `yaml:"listen"`
+	DBPath          string          `yaml:"db_path"` // 统一 SQLite 路径
 	VictoriaMetrics VictoriaMetrics `yaml:"victoriametrics"`
 	Alert           AlertConfig     `yaml:"alerts"`
 	SMTP            SMTPConfig      `yaml:"smtp"`
+	Registry        RegistryConfig  `yaml:"registry"`
 	UIDir           string          `yaml:"ui_dir"`
 }
 
 // AlertConfig 配置告警引擎。
 type AlertConfig struct {
 	EvalInterval time.Duration `yaml:"eval_interval"`
-	DBPath       string        `yaml:"db_path"`
+}
+
+// RegistryConfig 配置 Agent Registry 发现。
+type RegistryConfig struct {
+	TTL           time.Duration `yaml:"ttl"`            // agent 超时判离线，默认 90s
+	CleanInterval time.Duration `yaml:"clean_interval"` // 清理间隔，默认 60s
 }
 
 // SMTPConfig 配置邮件发送。
@@ -66,6 +73,9 @@ func (c *WebConfig) Clean() error {
 	if c.Listen == "" {
 		c.Listen = "0.0.0.0:8080"
 	}
+	if c.DBPath == "" {
+		c.DBPath = "./data/monitorweb.db"
+	}
 	if c.VictoriaMetrics.URL == "" {
 		c.VictoriaMetrics.URL = "http://127.0.0.1:8428"
 	}
@@ -75,8 +85,11 @@ func (c *WebConfig) Clean() error {
 	if c.Alert.EvalInterval <= 0 {
 		c.Alert.EvalInterval = 60 * time.Second
 	}
-	if c.Alert.DBPath == "" {
-		c.Alert.DBPath = "./data/alerts.db"
+	if c.Registry.TTL <= 0 {
+		c.Registry.TTL = 90 * time.Second
+	}
+	if c.Registry.CleanInterval <= 0 {
+		c.Registry.CleanInterval = 60 * time.Second
 	}
 	if c.UIDir == "" {
 		c.UIDir = "./web/ui/dist"

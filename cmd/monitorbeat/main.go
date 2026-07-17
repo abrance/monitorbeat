@@ -35,6 +35,7 @@ import (
 	"github.com/abrance/monitorbeat/scheduler/daemon"
 	"github.com/abrance/monitorbeat/scheduler/keyword"
 	"github.com/abrance/monitorbeat/tasks"
+	"github.com/abrance/monitorbeat/tasks/registry"
 
 	// 副作用导入：触发 init() 把 builder 注册到 tasks.factory。
 	_ "github.com/abrance/monitorbeat/tasks/basereport"
@@ -129,6 +130,10 @@ func main() {
 		slog.Error("keyword scheduler start failed", "err", err)
 		os.Exit(1)
 	}
+
+	// 启动 registry 心跳（可选，仅在配置了 URL 时生效）
+	regSvc := registry.New(cfg.Registry, version, tasks.RegisteredTypes)
+	go regSvc.Run(ctx)
 
 	rld := reloader.New(func(_ context.Context) error {
 		newCfg, err := loadConfig(cfg.ConfigPath)

@@ -30,11 +30,11 @@ type Server struct {
 // NewServer 构造 monitorweb 的 HTTP handler。
 //
 // 路由：/api/v1/* 全部优先匹配，最后注册 "/" 托管前端静态资源。
-func NewServer(cfg *config.WebConfig, client *vm.Client, store *alerts.Store) http.Handler {
+// mux 由调用方提供（允许外部追加路由，如 registry）。
+func NewServer(cfg *config.WebConfig, client *vm.Client, store *alerts.Store, mux *http.ServeMux) http.Handler {
 	s := &Server{cfg: cfg, vm: client, store: store}
 	ah := &alertHandler{store: store}
 
-	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/healthz", s.handleHealthz)
 	mux.HandleFunc("/api/v1/hosts", s.handleHosts)
 	mux.HandleFunc("/api/v1/host/", s.handleHost) // /host/:host/summary

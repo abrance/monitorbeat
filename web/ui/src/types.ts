@@ -3,6 +3,17 @@ export interface Host {
   last_seen: number
 }
 
+export interface Agent {
+  hostname: string
+  version: string
+  tasks: string[]
+  ip: string
+  k8s_node: string
+  start_time: number
+  last_seen: number
+  online: boolean
+}
+
 export interface Summary {
   hostname: string
   ts: number

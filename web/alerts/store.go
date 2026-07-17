@@ -3,8 +3,6 @@ package alerts
 import (
 	"database/sql"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -16,25 +14,12 @@ type Store struct {
 	db *sql.DB
 }
 
-// NewStore opens or initializes the SQLite database at dbPath.
-func NewStore(dbPath string) (*Store, error) {
-	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, fmt.Errorf("create db dir: %w", err)
-	}
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("open db: %w", err)
-	}
-	if _, err := db.Exec(`PRAGMA journal_mode=WAL`); err != nil {
-		return nil, fmt.Errorf("pragma wal: %w", err)
-	}
-	if _, err := db.Exec(`PRAGMA busy_timeout=5000`); err != nil {
-		return nil, fmt.Errorf("pragma busy_timeout: %w", err)
-	}
+// NewStore 使用已有的 *sql.DB 连接初始化告警存储。
+// 调用方负责打开连接和 PRAGMA 设置；Store 只做 migrate。
+func NewStore(db *sql.DB) (*Store, error) {
 	s := &Store{db: db}
 	if err := s.migrate(); err != nil {
-		return nil, fmt.Errorf("migrate: %w", err)
+		return nil, fmt.Errorf("alert migrate: %w", err)
 	}
 	return s, nil
 }

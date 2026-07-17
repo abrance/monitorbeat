@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type {
   Host,
+  Agent,
   Summary,
   MetricSeries,
   EventsResult,
@@ -31,6 +32,7 @@ export interface AsyncState<T> {
 export const api = {
   healthz: () => get<Healthz>('/healthz'),
   hosts: () => get<Host[]>('/hosts'),
+  agents: () => get<Agent[]>('/registry/agents'),
   summary: (host: string) => get<Summary>(`/host/${encodeURIComponent(host)}/summary`),
   range: (host: string, metrics: string[], from: number, to: number, step: number) =>
     get<MetricSeries[]>(

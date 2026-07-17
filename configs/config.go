@@ -31,11 +31,13 @@ type Config struct {
 	// ConfigPath 配置文件路径，由 main.go 注入；reloader 用它做 SIGUSR1 重载。
 	ConfigPath string `yaml:"-"`
 
+	// Registry 配置 agent 注册心跳（可选，空对象=不启用）。
+	Registry RegistryConfig `yaml:"registry"`
+
 	// Outputs 输出端配置列表（按声明顺序初始化）。
 	Outputs []OutputConfig `yaml:"outputs"`
 
-	// Basereports 是 basereport 任务配置列表。
-	// P1 阶段在此并行添加 PingConfigs/TCPConfigs/HTTPConfigs/KeywordConfigs/ScriptConfigs。
+	// 以下为各 task 配置列表。
 	Basereports     []BasereportConfig     `yaml:"basereports"`
 	Pings           []PingConfig           `yaml:"pings"`
 	TCPs            []TCPConfig            `yaml:"tcps"`
@@ -50,6 +52,13 @@ type Config struct {
 	GatherUpBeats   []GatherUpBeatConfig   `yaml:"gather_up_beats"`
 	Dmesgs          []DmesgConfig          `yaml:"dmesgs"`
 	Metricbeats     []MetricbeatConfig     `yaml:"metricbeats"`
+}
+
+// RegistryConfig 配置 agent 注册心跳（P4）。
+type RegistryConfig struct {
+	URL      string        `yaml:"url"`      // http://monitorweb:8080/api/v1/registry/heartbeat
+	Interval time.Duration `yaml:"interval"` // 上报间隔，默认 30s
+	Timeout  time.Duration `yaml:"timeout"`  // HTTP 超时，默认 5s
 }
 
 // OutputConfig 是单个输出端的配置，type 决定具体实现。
@@ -252,6 +261,12 @@ func (c *Config) AllTaskConfigs() []define.TaskConfig {
 //
 // 在配置加载后、调度器启动前调用一次，确保所有 Ident/TaskID 已填充默认值。
 func (c *Config) Clean() error {
+	if c.Registry.Interval <= 0 {
+		c.Registry.Interval = 30 * time.Second
+	}
+	if c.Registry.Timeout <= 0 {
+		c.Registry.Timeout = 5 * time.Second
+	}
 	for i := range c.Basereports {
 		if err := c.Basereports[i].Clean(); err != nil {
 			return err

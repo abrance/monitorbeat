@@ -51,3 +51,4 @@ web/ui/tsconfig.node.tsbuildinfo
 # ZCode plans
 .zcode/
 deploy/helm/monitorbeat/values-local.yaml
+monitorweb
