@@ -72,8 +72,9 @@ func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 	metrics["cost_ms"] = costMs
 
 	dims := map[string]string{
-		"command": g.cfg.Command,
-		"task_id": fmt.Sprintf("%d", g.cfg.TaskID),
+		"command":  g.cfg.Command,
+		"task_id":  fmt.Sprintf("%d", g.cfg.TaskID),
+		"hostname": tasks.Hostname(),
 	}
 	for k, v := range labels {
 		dims[k] = v

@@ -1,9 +1,5 @@
 export interface Host {
   hostname: string
-  os: string
-  platform: string
-  arch: string
-  kernel_version: string
   last_seen: number
 }
 

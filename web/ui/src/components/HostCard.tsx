@@ -13,9 +13,6 @@ export function HostCard({ host, summary }: { host: Host; summary?: Summary }) {
           {isOnline ? 'online' : 'offline'}
         </span>
       </div>
-      <div className="host-meta">
-        {host.platform} {host.arch} · {host.os}
-      </div>
       <div className="host-stats">
         <StatCard label="CPU" value={summary?.cpu_usage} unit="%" />
         <StatCard label="Mem" value={summary?.mem_used_percent} unit="%" />

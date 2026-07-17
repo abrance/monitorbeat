@@ -47,11 +47,16 @@ func New(cfg *configs.GatherUpBeatConfig) define.Task {
 	return g
 }
 
-// Run emits gather_up_beat_event with uptime and task_id.
+// Run emits gather_up_beat_event with uptime and hostname.
 func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 	data := map[string]any{
-		"uptime_sec": time.Since(startTime).Seconds(),
-		"task_id":    g.cfg.TaskID,
+		"dimensions": map[string]string{
+			"hostname": tasks.Hostname(),
+			"task_id":  fmt.Sprintf("%d", g.cfg.TaskID),
+		},
+		"metrics": map[string]float64{
+			"uptime_sec": time.Since(startTime).Seconds(),
+		},
 	}
 
 	select {

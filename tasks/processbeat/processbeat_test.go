@@ -48,20 +48,23 @@ func TestRun_ProducesEvent(t *testing.T) {
 			t.Fatalf("event type = %q, want %q", ev.GetType(), EventType)
 		}
 		data := ev.GetData().(map[string]any)
-		procs, ok := data["processes"].([]procInfo)
-		if !ok {
-			t.Fatal("processes field missing or wrong type")
-		}
-		if len(procs) == 0 {
-			t.Fatal("expected at least 1 process")
-		}
-		total, ok := data["total"].(int)
-		if !ok || total != len(procs) {
-			t.Errorf("total = %v, want %d", data["total"], len(procs))
-		}
-		if v, ok := data["cost_ms"]; !ok || v.(float64) < 0 {
-			t.Errorf("cost_ms invalid: %v", v)
-		}
+			procs, ok := data["processes"].([]procInfo)
+			if !ok {
+				t.Fatal("processes field missing or wrong type")
+			}
+			if len(procs) == 0 {
+				t.Fatal("expected at least 1 process")
+			}
+			metrics, ok := data["metrics"].(map[string]float64)
+			if !ok {
+				t.Fatal("metrics field missing")
+			}
+			if total, ok := metrics["total"]; !ok || int(total) != len(procs) {
+				t.Errorf("total = %v, want %d", total, len(procs))
+			}
+			if v, ok := metrics["cost_ms"]; !ok || v < 0 {
+				t.Errorf("cost_ms invalid: %v", v)
+			}
 		t.Logf("collected %d processes, top entry: pid=%d name=%s cpu=%.2f",
 			len(procs), procs[0].PID, procs[0].Name, procs[0].CPUPercent)
 	case <-time.After(8 * time.Second):

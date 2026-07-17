@@ -5,21 +5,14 @@
 package probe
 
 import (
-	"os"
 	"strconv"
 
 	"github.com/abrance/monitorbeat/define"
+	"github.com/abrance/monitorbeat/tasks"
 )
 
 func sourceHostname() string {
-	if hostname := os.Getenv("MONITORBEAT_HOSTNAME"); hostname != "" {
-		return hostname
-	}
-	hostname, err := os.Hostname()
-	if err != nil {
-		return "unknown"
-	}
-	return hostname
+	return tasks.Hostname()
 }
 
 func BuildEvent(probeType, target string, taskID int32, result Result) define.Event {

@@ -111,21 +111,25 @@ func TestRun_ProducesEvent(t *testing.T) {
 			t.Fatalf("event type = %q, want %q", ev.GetType(), EventType)
 		}
 		data := ev.GetData().(map[string]any)
-		if data["disk_ro"] == nil {
-			t.Error("disk_ro field missing")
-		}
-		if data["disk_space"] == nil {
-			t.Error("disk_space field missing")
-		}
-		if data["corefile"] == nil {
-			t.Error("corefile field missing")
-		}
-		if data["oom"] == nil {
-			t.Error("oom field missing")
-		}
-		if v, ok := data["cost_ms"]; !ok || v.(float64) < 0 {
-			t.Errorf("cost_ms invalid: %v", v)
-		}
+			if data["disk_ro"] == nil {
+				t.Error("disk_ro field missing")
+			}
+			if data["disk_space"] == nil {
+				t.Error("disk_space field missing")
+			}
+			if data["corefile"] == nil {
+				t.Error("corefile field missing")
+			}
+			if data["oom"] == nil {
+				t.Error("oom field missing")
+			}
+			metrics, ok := data["metrics"].(map[string]float64)
+			if !ok {
+				t.Fatal("metrics field missing")
+			}
+			if v, ok := metrics["cost_ms"]; !ok || v < 0 {
+				t.Errorf("cost_ms invalid: %v", v)
+			}
 	case <-time.After(3 * time.Second):
 		t.Fatal("no event received")
 	}
@@ -154,13 +158,14 @@ func TestRun_WithDiskCheck(t *testing.T) {
 
 	g.Run(ctx, ch)
 
-	select {
-	case ev := <-ch:
-		data := ev.GetData().(map[string]any)
-		// disk_ro 至少是空 slice（nil 表示出错，nil 也算合理）
-		// disk_space 检查，可能为空也可能有数据
-		t.Logf("disk_ro=%v, disk_space=%v, cost_ms=%v",
-			data["disk_ro"], data["disk_space"], data["cost_ms"])
+		select {
+		case ev := <-ch:
+			data := ev.GetData().(map[string]any)
+			// disk_ro 至少是空 slice（nil 表示出错，nil 也算合理）
+			// disk_space 检查，可能为空也可能有数据
+			metrics := data["metrics"].(map[string]float64)
+			t.Logf("disk_ro=%v, disk_space=%v, cost_ms=%v",
+				data["disk_ro"], data["disk_space"], metrics["cost_ms"])
 	case <-time.After(3 * time.Second):
 		t.Fatal("no event received")
 	}

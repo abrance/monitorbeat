@@ -13,12 +13,10 @@ package basereport
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/load"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/net"
@@ -84,26 +82,11 @@ func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 	}
 }
 
-// dimensions 返回事件维度集合：hostname + 启动时确定的 host info。
+// dimensions 返回事件维度集合：仅 hostname，静态主机元数据归入 host_info 事件。
 func (g *Gather) dimensions() map[string]string {
-	hostname := os.Getenv("MONITORBEAT_HOSTNAME")
-	if hostname == "" {
-		var err error
-		hostname, err = os.Hostname()
-		if err != nil {
-			hostname = "unknown"
-		}
+	return map[string]string{
+		"hostname": tasks.Hostname(),
 	}
-	dims := map[string]string{
-		"hostname": hostname,
-	}
-	if hi, err := host.Info(); err == nil {
-		dims["os"] = hi.OS
-		dims["platform"] = hi.Platform
-		dims["kernel_version"] = hi.KernelVersion
-		dims["arch"] = hi.KernelArch
-	}
-	return dims
 }
 
 // collectCPU 调用 cpu.Percent 采样 InfoPeriod 时长。

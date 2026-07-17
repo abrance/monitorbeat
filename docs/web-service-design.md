@@ -45,12 +45,30 @@
 ## 3. 数据模型映射（VM 侧）
 
 monitorbeat `formatVictoriaMetrics` 规则：
-- 有 `metrics` 的事件（basereport / processbeat / metricbeat / selfstats）：每个 metric 一行，`__name__=metric名`，label = `dimensions`（含 `hostname`, `os`, `platform`, `kernel_version`, `arch`）。
-- 无 `metrics` 的事件（exceptionbeat / dmesg / keyword）：发射 `event类型` 为 `__name__`、value=1 的计数器，label = dimensions。结构化明细（磁盘列表、corefile 路径等）在此形态下丢失，仅保留"是否发生"。
+- 所有使用 `{dimensions, metrics}` 结构化的事件（basereport / probe / script / metricbeat）：每个 metric 一行，`__name__=metric名`，label = `dimensions`（含 `hostname`）。
+- 无 metrics 的事件在 `formatVictoriaMetrics` 降级为 `__name__=eventType` + value=1 的计数器。经 2026-07-17 维度重构后，所有 task 已统一为 `{dimensions, metrics}` 结构，此降级路径不再对已实现的 task 触发。
 
-已知维度 label：`hostname`, `os`, `platform`, `kernel_version`, `arch`。
+已知维度 label（2026-07-17 重构后，所有 task 统一保留）：
+- `hostname` — 上报主机名，所有 task 均携带
+- 各 task 专有维度见下文
 
-已知关键指标（basereport）：`cpu_usage`, `mem_used_percent`, `mem_used_bytes`, `mem_available_bytes`, `disk_/_used_percent`（路径经 sanitize，`/`→`_`，如根分区=`disk___used_percent`）, `disk_<path>_used_bytes`, `load1`, `load5`, `load15`, `net_bytes_sent`, `net_bytes_recv`, `net_packets_sent`, `net_packets_recv`。
+各 task 维度明细：
+
+| Task | 事件类型 | 维度 |
+|------|---------|------|
+| basereport | `basereport_event` | `hostname` |
+| ping/tcp/http | `ping_event`/`tcp_event`/`http_event` | `hostname`, `probe_type`, `target`, `task_id` |
+| script | `script_event` | `hostname`, `command`, `task_id` + 脚本输出 labels |
+| keyword | `raw_log` | `hostname`, `file`, `regex` |
+| processbeat | `processbeat_event` | `hostname` |
+| metricbeat | `metricbeat_event` | `hostname` + Prometheus 端点 labels |
+| selfstats | `selfstats_event` | `hostname` |
+| exceptionbeat | `exceptionbeat_event` | `hostname` |
+| gatherupbeat | `gather_up_beat_event` | `hostname`, `task_id` |
+| socketsnapshot | `socketsnapshot_event` | `hostname` |
+| dmesg | `dmesg_event` | `hostname` |
+
+已知关键指标（basereport）：`cpu_usage`, `mem_used_percent`, `mem_used_bytes`, `mem_available_bytes`, `disk_<sanitized_path>_used_percent`（路径经 sanitize，`/`→`_`，如根分区=`disk___used_percent`）, `disk_<path>_used_bytes`, `load1`, `load5`, `load15`, `net_bytes_sent`, `net_bytes_recv`, `net_packets_sent`, `net_packets_recv`。
 
 > MVP 范围：指标类（basereport/processbeat/metricbeat/selfstats）完整可视化；结构化异常明细（exceptionbeat/dmesg/keyword）以"计数时间序列"形式展示（是否发生 + 次数），明细钻取为后续迭代（可选 json 摄入通道）。
 
@@ -61,12 +79,10 @@ Base path: `/api/v1`。所有响应 `application/json`。
 ### 4.1 `GET /api/v1/hosts`
 返回受监控主机清单。
 ```json
-[
-  {"hostname":"web-01","os":"linux","platform":"ubuntu","arch":"x86_64",
-   "kernel_version":"5.15.0","last_seen":1718000000}
-]
+[{"hostname":"web-01","last_seen":1718000000}]
 ```
-实现：`/api/v1/label/hostname/values` 取主机名；`max by (hostname) (timestamp(<任一basereport指标>))` 取 last_seen（秒）。聚合 os/platform/arch 取最近一次样本。
+> 注：`os`/`platform`/`arch`/`kernel_version` 等静态主机元数据于 2026-07-17 从 basereport 维度中移除（避免在每指标每周期上重复），若需要可按 `host_info` 类型单独引入。
+实现：`max by (hostname) (cpu_usage)` 取在线主机列表；`max by (hostname) (timestamp(cpu_usage))` 取 last_seen（秒）。
 
 ### 4.2 `GET /api/v1/host/:host/summary`
 主机当前快照（instant query）。

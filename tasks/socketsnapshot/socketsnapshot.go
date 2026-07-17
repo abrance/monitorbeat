@@ -73,9 +73,14 @@ func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 	}
 
 	data := map[string]any{
+		"dimensions": map[string]string{
+			"hostname": tasks.Hostname(),
+		},
+		"metrics": map[string]float64{
+			"total":   float64(len(conns)),
+			"cost_ms": float64(time.Since(start).Milliseconds()),
+		},
 		"connections": conns,
-		"total":       len(conns),
-		"cost_ms":     float64(time.Since(start).Milliseconds()),
 	}
 
 	select {

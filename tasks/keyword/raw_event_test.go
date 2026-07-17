@@ -21,8 +21,11 @@ func TestBuildRawLogEvent_Shape(t *testing.T) {
 	if !ok {
 		t.Fatalf("dimensions not map[string]string: %T", data["dimensions"])
 	}
-	if dims["file"] != "/tmp/demo.log" || dims["regex"] != `ERROR payment_id=(\d+)` || dims["line_number"] != "7" {
+	if dims["file"] != "/tmp/demo.log" || dims["regex"] != `ERROR payment_id=(\d+)` {
 		t.Fatalf("unexpected dimensions: %+v", dims)
+	}
+	if dims["hostname"] == "" {
+		t.Error("hostname dimension missing")
 	}
 	metrics, ok := data["metrics"].(map[string]float64)
 	if !ok {
@@ -43,12 +46,12 @@ func TestBuildRawLogEvent_Shape(t *testing.T) {
 func TestBuildRawLogEvent_NilCaptures(t *testing.T) {
 	ev := BuildRawLogEvent("f", `^INFO$`, 1, nil, "INFO")
 	data := ev.GetData().(map[string]any)
-	fields := data["fields"]
-	if fields == nil {
-		return
+	fields := data["fields"].(map[string]string)
+	// fields should contain line_number even with nil captures
+	if fields["line_number"] != "1" {
+		t.Fatalf("line_number = %q, want 1", fields["line_number"])
 	}
-	if m, ok := fields.(map[string]string); ok && len(m) == 0 {
-		return
+	if len(fields) != 1 {
+		t.Fatalf("expected only line_number, got %+v", fields)
 	}
-	t.Fatalf("nil captures should pass through, got %+v (%T)", fields, fields)
 }

@@ -54,19 +54,23 @@ func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 	runtime.ReadMemStats(&ms)
 
 	data := map[string]any{
-		"uptime_sec":        time.Since(startTime).Seconds(),
-		"num_goroutine":     runtime.NumGoroutine(),
-		"num_cpu":           runtime.NumCPU(),
-		"num_threads":       0, // runtime doesn't expose directly; use debug.SetMaxThreads indirectly
-		"heap_alloc_mb":     float64(ms.HeapAlloc) / (1024 * 1024),
-		"heap_sys_mb":       float64(ms.HeapSys) / (1024 * 1024),
-		"heap_objects":      ms.HeapObjects,
-		"num_gc":            ms.NumGC,
-		"gc_pause_total_ns": ms.PauseTotalNs,
-		"alloc_mb":          float64(ms.Alloc) / (1024 * 1024),
-		"total_alloc_mb":    float64(ms.TotalAlloc) / (1024 * 1024),
-		"sys_mb":            float64(ms.Sys) / (1024 * 1024),
-		"go_version":        runtime.Version(),
+		"dimensions": map[string]string{
+			"hostname": tasks.Hostname(),
+		},
+		"metrics": map[string]float64{
+			"uptime_sec":        time.Since(startTime).Seconds(),
+			"num_goroutine":     float64(runtime.NumGoroutine()),
+			"num_cpu":           float64(runtime.NumCPU()),
+			"heap_alloc_mb":     float64(ms.HeapAlloc) / (1024 * 1024),
+			"heap_sys_mb":       float64(ms.HeapSys) / (1024 * 1024),
+			"heap_objects":      float64(ms.HeapObjects),
+			"num_gc":            float64(ms.NumGC),
+			"gc_pause_total_ns": float64(ms.PauseTotalNs),
+			"alloc_mb":          float64(ms.Alloc) / (1024 * 1024),
+			"total_alloc_mb":    float64(ms.TotalAlloc) / (1024 * 1024),
+			"sys_mb":            float64(ms.Sys) / (1024 * 1024),
+		},
+		"go_version": runtime.Version(),
 	}
 
 	select {

@@ -60,10 +60,17 @@ func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 	client.Timeout = g.cfg.Timeout
 	metrics, labels, fetchErr := g.fetch(ctx)
 
+	dims := map[string]string{
+		"hostname": tasks.Hostname(),
+	}
+	for k, v := range labels {
+		dims[k] = v
+	}
+
 	data := map[string]any{
-		"metrics": metrics,
-		"labels":  labels,
-		"cost_ms": float64(time.Since(start).Milliseconds()),
+		"dimensions": dims,
+		"metrics":    metrics,
+		"cost_ms":    float64(time.Since(start).Milliseconds()),
 	}
 
 	if fetchErr != nil {

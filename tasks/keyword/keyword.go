@@ -125,9 +125,9 @@ func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 func (g *Gather) emitError(ctx context.Context, e chan<- define.Event, cause error) {
 	ev := define.NewEvent(RawLogEventType, map[string]any{
 		"dimensions": map[string]string{
-			"file":        g.cfg.File,
-			"regex":       g.cfg.Pattern,
-			"line_number": "0",
+			"file":     g.cfg.File,
+			"regex":    g.cfg.Pattern,
+			"hostname": tasks.Hostname(),
 		},
 		"metrics": map[string]float64{"matches_count": 0},
 		"fields":  map[string]string{},

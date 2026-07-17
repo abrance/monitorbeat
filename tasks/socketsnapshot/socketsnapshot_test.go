@@ -46,17 +46,20 @@ func TestRun_ProducesEvent(t *testing.T) {
 			t.Fatalf("event type = %q, want %q", ev.GetType(), EventType)
 		}
 		data := ev.GetData().(map[string]any)
-		conns, ok := data["connections"].([]connInfo)
-		if !ok {
-			t.Fatal("connections field missing or wrong type")
-		}
-		total, ok := data["total"].(int)
-		if !ok || total != len(conns) {
-			t.Errorf("total = %v, want %d", data["total"], len(conns))
-		}
-		if v, ok := data["cost_ms"]; !ok || v.(float64) < 0 {
-			t.Errorf("cost_ms invalid: %v", v)
-		}
+			conns, ok := data["connections"].([]connInfo)
+			if !ok {
+				t.Fatal("connections field missing or wrong type")
+			}
+			metrics, ok := data["metrics"].(map[string]float64)
+			if !ok {
+				t.Fatal("metrics field missing")
+			}
+			if total, ok := metrics["total"]; !ok || int(total) != len(conns) {
+				t.Errorf("total = %v, want %d", total, len(conns))
+			}
+			if v, ok := metrics["cost_ms"]; !ok || v < 0 {
+				t.Errorf("cost_ms invalid: %v", v)
+			}
 		t.Logf("collected %d connections", len(conns))
 		if len(conns) > 0 {
 			t.Logf("first: pid=%d proto=%s status=%s %s:%d -> %s:%d",

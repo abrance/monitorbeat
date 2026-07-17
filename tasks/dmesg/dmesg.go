@@ -101,9 +101,14 @@ func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 		matches = make([]matchResult, 0)
 	}
 	data := map[string]any{
+		"dimensions": map[string]string{
+			"hostname": tasks.Hostname(),
+		},
+		"metrics": map[string]float64{
+			"total":   float64(len(matches)),
+			"cost_ms": float64(time.Since(start).Milliseconds()),
+		},
 		"exceptions": matches,
-		"total":      len(matches),
-		"cost_ms":    float64(time.Since(start).Milliseconds()),
 	}
 	select {
 	case e <- define.NewEvent(EventType, data):

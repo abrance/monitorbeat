@@ -89,11 +89,20 @@ func (g *Gather) Run(ctx context.Context, e chan<- define.Event) {
 	}
 
 	data := map[string]any{
+		"dimensions": map[string]string{
+			"hostname": tasks.Hostname(),
+		},
+		"metrics": map[string]float64{
+			"cost_ms":          float64(time.Since(start).Milliseconds()),
+			"disk_ro_count":    float64(len(diskRO)),
+			"disk_space_count": float64(len(diskSpace)),
+			"corefile_count":   float64(len(corefiles)),
+			"oom_count":        float64(len(ooms)),
+		},
 		"disk_ro":    diskRO,
 		"disk_space": diskSpace,
 		"corefile":   corefiles,
 		"oom":        ooms,
-		"cost_ms":    float64(time.Since(start).Milliseconds()),
 	}
 
 	select {

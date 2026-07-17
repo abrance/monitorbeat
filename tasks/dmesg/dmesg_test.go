@@ -39,14 +39,17 @@ func TestRun_ProducesEvent(t *testing.T) {
 			t.Fatalf("event type = %q, want %q", ev.GetType(), EventType)
 		}
 		data := ev.GetData().(map[string]any)
-		exceptions, ok := data["exceptions"].([]matchResult)
-		if !ok {
-			t.Fatal("exceptions field missing or wrong type")
-		}
-		total, ok := data["total"].(int)
-		if !ok || total != len(exceptions) {
-			t.Errorf("total = %v, want %d", data["total"], len(exceptions))
-		}
+			exceptions, ok := data["exceptions"].([]matchResult)
+			if !ok {
+				t.Fatal("exceptions field missing or wrong type")
+			}
+			metrics, ok := data["metrics"].(map[string]float64)
+			if !ok {
+				t.Fatal("metrics field missing or wrong type")
+			}
+			if total, ok := metrics["total"]; !ok || int(total) != len(exceptions) {
+				t.Errorf("total = %v, want %d", total, len(exceptions))
+			}
 		t.Logf("found %d dmesg exceptions", len(exceptions))
 		for _, m := range exceptions {
 			t.Logf("  %s: %s", m.Name, m.Message)
