@@ -3,16 +3,16 @@ kind: ConfigMap
 metadata:
   name: {{ include "monitorbeat.fullname" . }}-beat
   labels: {{- include "monitorbeat.labels" . | nindent 4 }}
-	data:
-	  monitorbeat.yaml: |
-	    check_interval: {{ .Values.monitorbeat.config.check_interval }}
-	    event_buffer_size: {{ .Values.monitorbeat.config.event_buffer_size }}
-	    {{- with .Values.monitorbeat.config.registry }}
-	    registry:
-	      url: {{ .url }}
-	      interval: {{ .interval }}
-	    {{- end }}
-	    outputs:
+data:
+  monitorbeat.yaml: |
+    check_interval: {{ .Values.monitorbeat.config.check_interval }}
+    event_buffer_size: {{ .Values.monitorbeat.config.event_buffer_size }}
+    {{- with .Values.monitorbeat.config.registry }}
+    registry:
+      url: {{ .url }}
+      interval: {{ .interval }}
+    {{- end }}
+    outputs:
 {{ toYaml .Values.monitorbeat.config.outputs | indent 6 }}
     basereports:
 {{ toYaml .Values.monitorbeat.config.basereports | indent 6 }}
