@@ -1,8 +1,100 @@
 #!/bin/sh
-# pre-commit hook: run make lint before each commit.
-# If lint fails, the commit is aborted.
+# pre-commit hook
+#   1. make lint (go vet + gofmt)
+#   2. check-merge-conflict — abort if unresolved conflict markers remain
+#   3. detect-private-key — abort if private key / credential files are staged
+#   4. end-of-file-fixer — ensure every file ends with a newline
+#   5. trailing-whitespace — warn about trailing whitespace
 
 set -e
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+pass() { echo "  ${GREEN}✓${NC} $1"; }
+fail() { echo "  ${RED}✗${NC} $1"; }
+
+all_pass=true
+
+# ----- 1. make lint (go vet + gofmt) -----
 echo "→ pre-commit: running make lint..."
-make lint
+if make lint >/dev/null 2>&1; then
+    pass "make lint"
+else
+    fail "make lint"
+    make lint 2>&1 | head -20
+    all_pass=false
+fi
+
+# ----- 2. check-merge-conflict -----
+echo "→ pre-commit: checking for unresolved merge conflicts..."
+conflict_files=$(git diff --cached --name-only -G'^<<<<<<< |^=======$|^>>>>>>> ' 2>/dev/null || true)
+if [ -n "$conflict_files" ]; then
+    fail "merge conflict markers found in:"
+    echo "$conflict_files" | sed 's/^/    /'
+    all_pass=false
+else
+    pass "check-merge-conflict"
+fi
+
+# ----- 3. detect-private-key -----
+echo "→ pre-commit: scanning for private keys / credentials..."
+PRIVATE_KEY_PATTERNS='\.(key|pem|p12|pfx|asc|gpg|priv)$'
+key_files=$(git diff --cached --name-only | grep -E "$PRIVATE_KEY_PATTERNS" 2>/dev/null || true)
+cred_hits=$(git diff --cached -G'(?i)(BEGIN (RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY|-----BEGIN CERT-----)' --name-only 2>/dev/null || true)
+all_keys=$(printf "%s\n%s" "$key_files" "$cred_hits" | sort -u | grep -v '^$' || true)
+if [ -n "$all_keys" ]; then
+    fail "private key / credential files staged:"
+    echo "$all_keys" | sed 's/^/    /'
+    echo "    If intentional, use 'git commit --no-verify' to bypass."
+    all_pass=false
+else
+    pass "detect-private-key"
+fi
+
+# ----- 4. end-of-file-fixer -----
+echo "→ pre-commit: checking files end with newline..."
+eof_files=""
+while IFS= read -r file; do
+    [ -z "$file" ] && continue
+    [ ! -f "$file" ] && continue
+    last=$(tail -c 1 "$file" 2>/dev/null || echo "")
+    [ "$last" != "" ] && eof_files="$eof_files  $file"$'\n'
+done <<EOF
+$(git diff --cached --name-only --diff-filter=ACM)
+EOF
+if [ -n "$eof_files" ]; then
+    fixed=0
+    while IFS= read -r file; do
+        [ -z "$file" ] && continue
+        [ ! -f "$file" ] && continue
+        echo "" >> "$file"
+        git add "$file"
+        fixed=$((fixed + 1))
+    done <<EOF
+$(echo "$eof_files")
+EOF
+    pass "end-of-file-fixer ($fixed file(s) auto-fixed)"
+else
+    pass "end-of-file-fixer"
+fi
+
+# ----- 5. trailing-whitespace -----
+echo "→ pre-commit: checking for trailing whitespace..."
+tws_files=$(git diff --cached --name-only --diff-filter=ACM | xargs grep -l '[[:space:]]$' 2>/dev/null || true)
+if [ -n "$tws_files" ]; then
+    fail "trailing whitespace found in:"
+    echo "$tws_files" | sed 's/^/    /'
+    echo "    Run: sed -i 's/[[:space:]]*$//' <file>"
+    all_pass=false
+else
+    pass "trailing-whitespace"
+fi
+
+# ----- summary -----
+echo ""
+if [ "$all_pass" = false ]; then
+    echo "  ${RED}pre-commit: FAILED — fix above issues and commit again${NC}"
+    exit 1
+fi
+echo "  ${GREEN}pre-commit: ALL CHECKS PASSED${NC}"

@@ -1,0 +1,47 @@
+#!/bin/sh
+# prepare-commit-msg hook
+#   Calls aicommit2 to generate a conventional commit message from staged changes.
+#   Only fires on `git commit` (no -m / --template / merge / squash).
+#   The generated message is written to the commit message file; the editor
+#   (if any) opens with it so you can tweak before saving.
+#
+#   Skip with: git commit --no-verify
+#   Or provide your own: git commit -m "..."
+
+set -e
+
+COMMIT_MSG_FILE="$1"
+COMMIT_SOURCE="$2"
+
+# Only generate when user typed bare `git commit` (no -m, --template, etc.)
+if [ "$COMMIT_SOURCE" != "" ]; then
+    exit 0
+fi
+
+if ! command -v aicommit2 >/dev/null 2>&1; then
+    echo "  ⚠  aicommit2 not found — install with: npm install -g aicommit2" >&2
+    exit 0
+fi
+
+# aicommit2 generates the message and prints JSON to stdout.
+# Parse subject + body and write to the commit message file.
+MSG=$(aicommit2 --dry-run --auto-select --output json 2>/dev/null || true)
+if [ -z "$MSG" ]; then
+    exit 0
+fi
+
+SUBJECT=$(echo "$MSG" | node -e "
+    let d=''; process.stdin.on('data',c=>d+=c);
+    process.stdin.on('end',()=>{
+        try {
+            const j=JSON.parse(d);
+            if(j.subject) console.log(j.subject);
+            if(j.body) console.log('\\n'+j.body);
+        } catch(e) { /* ignore parse errors */ }
+    });
+")
+
+if [ -n "$SUBJECT" ]; then
+    echo "$SUBJECT" > "$COMMIT_MSG_FILE"
+    echo "  ✓ aicommit2: commit message generated (edit in editor if needed)" >&2
+fi
