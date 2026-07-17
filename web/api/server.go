@@ -134,41 +134,41 @@ func (s *Server) handleHealthz(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-	type hostOut struct {
-		Hostname string `json:"hostname"`
-		LastSeen int64  `json:"last_seen"`
-	}
+type hostOut struct {
+	Hostname string `json:"hostname"`
+	LastSeen int64  `json:"last_seen"`
+}
 
-	func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		// 一次查询聚合所有主机的 hostname 与 last_seen。
-		hvec, err := s.vm.Query(ctx, `max by (hostname) (cpu_usage)`)
-		if err != nil {
-			s.vmError(w, err)
-			return
-		}
-		tsVec, err := s.vm.Query(ctx, `max by (hostname) (timestamp(cpu_usage))`)
-		if err != nil {
-			s.vmError(w, err)
-			return
-		}
-		tsMap := make(map[string]float64, len(tsVec))
-		for _, v := range tsVec {
-			tsMap[v.Metric["hostname"]] = v.Value[1]
-		}
-		out := make([]hostOut, 0, len(hvec))
-		for _, v := range hvec {
-			h := v.Metric["hostname"]
-			if h == "" {
-				continue
-			}
-			out = append(out, hostOut{
-				Hostname: h,
-				LastSeen: int64(tsMap[h]),
-			})
-		}
-		writeJSON(w, out)
+func (s *Server) handleHosts(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	// 一次查询聚合所有主机的 hostname 与 last_seen。
+	hvec, err := s.vm.Query(ctx, `max by (hostname) (cpu_usage)`)
+	if err != nil {
+		s.vmError(w, err)
+		return
 	}
+	tsVec, err := s.vm.Query(ctx, `max by (hostname) (timestamp(cpu_usage))`)
+	if err != nil {
+		s.vmError(w, err)
+		return
+	}
+	tsMap := make(map[string]float64, len(tsVec))
+	for _, v := range tsVec {
+		tsMap[v.Metric["hostname"]] = v.Value[1]
+	}
+	out := make([]hostOut, 0, len(hvec))
+	for _, v := range hvec {
+		h := v.Metric["hostname"]
+		if h == "" {
+			continue
+		}
+		out = append(out, hostOut{
+			Hostname: h,
+			LastSeen: int64(tsMap[h]),
+		})
+	}
+	writeJSON(w, out)
+}
 
 func (s *Server) handleHost(w http.ResponseWriter, r *http.Request) {
 	rest := strings.TrimPrefix(r.URL.Path, "/api/v1/host/")

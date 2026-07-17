@@ -38,20 +38,20 @@ func TestRun_ProducesEvent(t *testing.T) {
 			t.Fatalf("event type = %q, want %q", ev.GetType(), EventType)
 		}
 		data := ev.GetData().(map[string]any)
-			dims, ok := data["dimensions"].(map[string]string)
-			if !ok {
-				t.Fatal("dimensions field missing")
-			}
-			metrics, ok := data["metrics"].(map[string]float64)
-			if !ok {
-				t.Fatal("metrics field missing")
-			}
-			if _, ok := metrics["uptime_sec"]; !ok {
-				t.Error("uptime_sec missing")
-			}
-			if v, ok := dims["task_id"]; !ok || v != "8002" {
-				t.Errorf("task_id = %v, want 8002", v)
-			}
+		dims, ok := data["dimensions"].(map[string]string)
+		if !ok {
+			t.Fatal("dimensions field missing")
+		}
+		metrics, ok := data["metrics"].(map[string]float64)
+		if !ok {
+			t.Fatal("metrics field missing")
+		}
+		if _, ok := metrics["uptime_sec"]; !ok {
+			t.Error("uptime_sec missing")
+		}
+		if v, ok := dims["task_id"]; !ok || v != "8002" {
+			t.Errorf("task_id = %v, want 8002", v)
+		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("no event received")
 	}
