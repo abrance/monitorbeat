@@ -53,7 +53,7 @@ monitorbeat:
         enabled: true
         target: "186.241.120.132"
         backend: icmp
-        period: 30s
+        period: 60s
         timeout: 10s
         count: 3
         payload_size: 56
