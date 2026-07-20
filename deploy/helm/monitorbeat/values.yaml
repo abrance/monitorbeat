@@ -52,7 +52,7 @@ monitorbeat:
       - task_id: 1001
         enabled: true
         target: "186.241.120.132"
-        backend: command
+        backend: icmp
         period: 30s
         timeout: 10s
         count: 3

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/abrance/monitorbeat/configs"
@@ -97,7 +96,8 @@ func runICMPBackend(ctx context.Context, start time.Time, cfg *configs.PingConfi
 			continue
 		}
 		msg := icmp.Message{
-			Type: ipv4.ICMPTypeEcho, Code: 0,
+			Type: ipv4.ICMPTypeEcho,
+			Code: 0,
 			Body: &icmp.Echo{
 				ID: id, Seq: seq + 1,
 				Data: payload,
@@ -145,52 +145,67 @@ func runICMPBackend(ctx context.Context, start time.Time, cfg *configs.PingConfi
 	return probe.Result{Success: success, Duration: duration, Metrics: metrics}
 }
 
-// readOneEcho waits for a single Echo Reply matching id/seq. It enforces
-// both the per-packet deadline and the surrounding context so callers
-// can cancel the sweep without leaking the listener.
+// readOneEcho waits for an Echo Reply matching id and seq. Raw IPv4 sockets
+// receive outbound Echo Requests and unrelated ICMP packets as well as replies,
+// so packets that do not match the current probe are ignored until the deadline.
 func readOneEcho(ctx context.Context, listener *icmp.PacketConn, id, seq int, deadline time.Duration) (time.Time, error) {
-	type result struct {
-		at  time.Time
-		err error
+	expiresAt := time.Now().Add(deadline)
+	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(expiresAt) {
+		expiresAt = ctxDeadline
 	}
-	ch := make(chan result, 1)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		buf := make([]byte, 1500)
-		_ = listener.SetReadDeadline(time.Now().Add(deadline))
-		n, peer, err := listener.ReadFrom(buf)
-		if err != nil {
-			ch <- result{err: err}
-			return
+	buf := make([]byte, 1500)
+	for {
+		if err := ctx.Err(); err != nil {
+			return time.Time{}, err
 		}
-		msg, err := icmp.ParseMessage(1, buf[:n])
-		if err != nil {
-			ch <- result{err: err}
-			return
+		if err := listener.SetReadDeadline(expiresAt); err != nil {
+			return time.Time{}, fmt.Errorf("set ICMP read deadline: %w", err)
 		}
-		if msg.Type != ipv4.ICMPTypeEchoReply {
-			ch <- result{err: fmt.Errorf("unexpected icmp type %v from %s", msg.Type, peer)}
-			return
-		}
-		echo, ok := msg.Body.(*icmp.Echo)
-		if !ok || echo.ID != id || echo.Seq != seq {
-			ch <- result{err: fmt.Errorf("mismatched echo reply (id=%d seq=%d) from %s", echo.ID, echo.Seq, peer)}
-			return
-		}
-		ch <- result{at: time.Now()}
-	}()
 
-	select {
-	case r := <-ch:
-		wg.Wait()
-		return r.at, r.err
-	case <-ctx.Done():
-		wg.Wait()
-		return time.Time{}, ctx.Err()
+		n, _, err := listener.ReadFrom(buf)
+		if err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return time.Time{}, ctxErr
+			}
+			return time.Time{}, err
+		}
+		if isMatchingEchoReply(buf[:n], id, seq) {
+			return time.Now(), nil
+		}
 	}
+}
+
+// isMatchingEchoReply reports whether raw is the Echo Reply for a particular
+// probe. Invalid, outbound, and unrelated packets are intentionally ignored by
+// readOneEcho because raw sockets observe all of them.
+func isMatchingEchoReply(raw []byte, id, seq int) bool {
+	msg, err := parseICMPv4Message(raw)
+	if err != nil || msg.Type != ipv4.ICMPTypeEchoReply {
+		return false
+	}
+	echo, ok := msg.Body.(*icmp.Echo)
+	return ok && echo.ID == id && echo.Seq == seq
+}
+
+// parseICMPv4Message converts a packet received from an IPv4 raw socket into
+// an ICMP message. Linux supplies the IPv4 header for ip4:icmp sockets, while
+// other environments may supply only the ICMP payload, so both forms are
+// accepted.
+func parseICMPv4Message(raw []byte) (*icmp.Message, error) {
+	if len(raw) == 0 {
+		return nil, errors.New("empty ICMP packet")
+	}
+
+	icmpPayload := raw
+	if raw[0]>>4 == 4 {
+		headerLen := int(raw[0]&0x0f) * 4
+		if headerLen < ipv4.HeaderLen || headerLen >= len(raw) {
+			return nil, fmt.Errorf("invalid IPv4 header length %d for %d-byte packet", headerLen, len(raw))
+		}
+		icmpPayload = raw[headerLen:]
+	}
+	return icmp.ParseMessage(1, icmpPayload)
 }
 
 // resolveTarget turns a hostname or IP literal into a net.IP suitable

@@ -11,6 +11,8 @@ RUN npm run build
 
 # ---- 阶段 2: 编译 Go 二进制 ----
 FROM golang:1.25-bookworm AS go
+ARG GOPROXY=https://goproxy.cn|https://goproxy.io|https://proxy.golang.org|direct
+ENV GOPROXY=${GOPROXY}
 WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download

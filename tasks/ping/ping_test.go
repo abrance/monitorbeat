@@ -94,4 +94,9 @@ func TestGather_Run_emitsEvent_whenICMPBackendAvailable(t *testing.T) {
 	if ev.GetType() != "ping_event" {
 		t.Fatalf("event type = %q, want ping_event", ev.GetType())
 	}
+	data := ev.GetData().(map[string]any)
+	metrics := data["metrics"].(map[string]float64)
+	if metrics["success"] != 1 || metrics["packets_received"] < 1 {
+		t.Fatalf("ICMP probe metrics = %+v, want successful reply", metrics)
+	}
 }
