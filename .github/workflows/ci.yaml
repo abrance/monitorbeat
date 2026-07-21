@@ -36,6 +36,8 @@ jobs:
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
+        with:
+          version: v3.18.4
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -58,6 +60,101 @@ jobs:
         run: |
           helm lint ./deploy/helm/monitorbeat
           helm template monitorbeat ./deploy/helm/monitorbeat > /dev/null
+
+  helm:
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: >-
+      github.event_name == 'push' &&
+      github.ref_type == 'tag' &&
+      startsWith(github.ref_name, 'v')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.18.4
+
+      - name: Resolve release metadata
+        id: release
+        shell: bash
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ -z "$VERSION" ]]; then
+            printf 'Invalid release tag: %s\n' "$GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          if [[ "$VERSION" == *+* ]]; then
+            printf 'Build metadata is unsupported: %s\n' "$VERSION" >&2
+            exit 1
+          fi
+          if (( ${#VERSION} > 63 )); then
+            printf 'Release version exceeds 63 characters: %s\n' "$VERSION" >&2
+            exit 1
+          fi
+
+          printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
+          printf 'owner=%s\n' "${OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Package and verify Helm chart
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+          helm package ./deploy/helm/monitorbeat \
+            --destination dist \
+            --version "$VERSION" \
+            --app-version "$VERSION"
+
+          PACKAGE="dist/monitorbeat-${VERSION}.tgz"
+          test -f "$PACKAGE"
+
+          CHART_METADATA="$(helm show chart "$PACKAGE")"
+          ACTUAL_VERSION="$(printf '%s\n' "$CHART_METADATA" | awk '$1 == "version:" { print $2 }')"
+          ACTUAL_APP_VERSION="$(printf '%s\n' "$CHART_METADATA" | awk '$1 == "appVersion:" { print $2 }' | tr -d '"')"
+          test "$ACTUAL_VERSION" = "$VERSION"
+          test "$ACTUAL_APP_VERSION" = "$VERSION"
+
+          helm lint "$PACKAGE"
+          helm template monitorbeat "$PACKAGE" > /dev/null
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | helm registry login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password-stdin
+
+      - name: Push and verify Helm chart
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          OWNER: ${{ steps.release.outputs.owner }}
+        run: |
+          set -euo pipefail
+
+          PACKAGE="dist/monitorbeat-${VERSION}.tgz"
+          CHART="oci://ghcr.io/${OWNER}/charts/monitorbeat"
+          helm push "$PACKAGE" "oci://ghcr.io/${OWNER}/charts"
+
+          REMOTE_CHART="$(helm show chart "$CHART" --version "$VERSION")"
+          ACTUAL_VERSION="$(printf '%s\n' "$REMOTE_CHART" | awk '$1 == "version:" { print $2 }')"
+          ACTUAL_APP_VERSION="$(printf '%s\n' "$REMOTE_CHART" | awk '$1 == "appVersion:" { print $2 }' | tr -d '"')"
+          test "$ACTUAL_VERSION" = "$VERSION"
+          test "$ACTUAL_APP_VERSION" = "$VERSION"
 
   docker:
     runs-on: ubuntu-latest
