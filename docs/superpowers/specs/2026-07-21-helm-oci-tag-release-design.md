@@ -24,11 +24,11 @@
 2. 依赖现有 `build-test` Job，确保构建、测试以及 Helm lint/render 均通过。
 3. 授予 `contents: read` 与 `packages: write` 权限。
 4. Checkout 仓库。现有 `build-test` 和新增发布 Job 都通过 `azure/setup-helm@v4` 安装固定版本 `v3.18.4`，避免 latest 漂移。
-5. 从 tag 中移除开头的 `v`，校验后得到发布版本。该步骤必须发生在 registry 登录之前，确保无效版本不会执行登录或推送。
+5. 从 tag 中移除开头的 `v`，完成基本版本检查后得到发布版本。
 6. 将 GitHub repository owner 转为小写，作为 GHCR namespace。
-7. 使用 `helm registry login` 和 Actions 提供的 `GITHUB_TOKEN` 登录 `ghcr.io`。
-8. 使用发布版本覆盖 Chart 的 `version` 和 `appVersion`，打包到 `dist/`。
-9. 校验包文件、包内版本和模板渲染结果。
+7. 使用发布版本覆盖 Chart 的 `version` 和 `appVersion`，打包到 `dist/`；`helm package` 同时完成完整的语义化版本校验。打包和发布物校验必须发生在 registry 登录之前，确保任何无效版本都不会执行登录或推送。
+8. 校验包文件、包内版本和模板渲染结果。
+9. 使用 `helm registry login` 和 Actions 提供的 `GITHUB_TOKEN` 登录 `ghcr.io`。
 10. 将包推送至 `oci://ghcr.io/<repository-owner>/charts`，再从 OCI 地址读取 Chart 元数据确认发布成功。
 
 Helm 会根据包内的 Chart 名称和版本补全仓库路径。例如，tag `v1.2.3` 将发布：
@@ -87,9 +87,11 @@ helm push "$PACKAGE" "oci://ghcr.io/${OWNER}/charts"
     printf 'owner=%s\n' "${OWNER,,}" >> "$GITHUB_OUTPUT"
 ```
 
-其他非法语义化版本由后续 `helm package --version` 拒绝。
+其他非法语义化版本由紧接着执行的 `helm package --version` 拒绝。打包和发布物校验步骤位于 GHCR 登录之前。
 
 ### 登录 GHCR
+
+仅在打包及发布物校验成功后执行：
 
 ```yaml
 - name: Log in to GHCR
@@ -103,6 +105,8 @@ helm push "$PACKAGE" "oci://ghcr.io/${OWNER}/charts"
 ```
 
 ### 打包并校验发布物
+
+此步骤紧跟版本提取步骤，并且位于 GHCR 登录之前：
 
 ```yaml
 - name: Package and verify Helm chart
