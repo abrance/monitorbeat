@@ -170,6 +170,18 @@ a {
   gap: 8px;
 }
 
+.host-trends {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 4px 0 10px;
+}
+
+.host-trends .recharts-responsive-container {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
 .host-stats .stat-card {
   min-width: 0;
   padding: 10px 8px;
@@ -189,6 +201,22 @@ a {
   border-radius: 8px;
   padding: 12px 14px;
   min-width: 110px;
+  position: relative;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.stat-card.severity-firing {
+  border-color: var(--bad);
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+
+.stat-card.severity-pending {
+  border-color: #ffc107;
+  box-shadow: inset 3px 0 0 #ffc107;
+}
+
+.stat-card.severity-ok {
+  /* inherits default border; keep class so layouts can opt in */
 }
 
 .stat-label {
@@ -255,14 +283,67 @@ a {
   white-space: nowrap;
 }
 
-.metric-picker {
+.metric-groups {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
+  flex-direction: column;
+  gap: 6px;
   max-height: 420px;
   overflow-y: auto;
   padding: 2px;
+}
+
+.metric-group {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.metric-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 7px 12px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.metric-group-head:hover {
+  background: rgba(79, 156, 249, 0.06);
+}
+
+.metric-group-arrow {
+  color: var(--muted);
+  width: 12px;
+  display: inline-block;
+  text-align: center;
+}
+
+.metric-group-name {
+  font-weight: 600;
+}
+
+.metric-group-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.metric-empty {
+  padding: 16px;
+  text-align: center;
+}
+
+.metric-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 12px 12px;
 }
 
 .chip {
@@ -292,6 +373,41 @@ a {
   color: var(--muted);
   padding: 20px 0;
   text-align: center;
+}
+
+.metric-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 14px;
+}
+
+.metric-panel {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+
+.metric-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.metric-panel-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.metric-panel-unit {
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
 .host-select {

@@ -1,17 +1,21 @@
+import type { Severity } from '../lib/severity'
+
 export function StatCard({
   label,
   value,
   unit,
   hint,
+  severity = 'ok',
 }: {
   label: string
   value?: number
   unit?: string
   hint?: string
+  severity?: Severity
 }) {
   const has = value !== undefined && value !== null
   return (
-    <div className="stat-card">
+    <div className={`stat-card severity-${severity}`}>
       <div className="stat-label">{label}</div>
       <div className="stat-value">
         {has ? value!.toFixed(1) : '—'}
