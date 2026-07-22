@@ -89,8 +89,9 @@ monitorweb:
       url: "http://vmtest-1-victoria-metrics-cluster-vmselect.bkbase-test.svc.cluster.local:8481/select/0/prometheus"
       timeout: 15s
     ui_dir: "/usr/local/share/monitorweb/ui"
+    db_path: "/data/monitorweb.db"
     alerts:
-      db_path: "/data/alerts.db"
+      eval_interval: 60s
 
   # -- monitorweb Ingress (Traefik + cert-manager)
   ingress:
