@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/smtp"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -38,17 +39,19 @@ func New(cfg Config) *Sender {
 }
 
 // SendAlert sends an alert notification email.
-func (s *Sender) SendAlert(rule alerts.AlertRule, hostname string, value float64, state string) error {
+func (s *Sender) SendAlert(rule alerts.AlertRule, hostname string, labels map[string]string, value float64, state string) error {
 	if s.cfg.Host == "" || len(s.cfg.To) == 0 {
 		return nil // SMTP not configured
 	}
 
-	subject := fmt.Sprintf("[MONITOR] %s: %s @ %s - %.1f",
-		map[string]string{"firing": "FIRING", "recovered": "RECOVERED"}[state],
-		rule.Name, hostname, value,
-	)
+	stateLabel := "FIRING"
+	if state == "recovered" {
+		stateLabel = "RECOVERED"
+	}
 
-	body, err := s.renderBody(rule, hostname, value, state)
+	subject := fmt.Sprintf("[MONITOR] %s: %s @ %s", stateLabel, rule.Name, hostnameOrUnknown(hostname))
+
+	body, err := s.renderBody(rule, hostname, labels, value, state)
 	if err != nil {
 		return fmt.Errorf("render email: %w", err)
 	}
@@ -66,13 +69,17 @@ func (s *Sender) SendAlert(rule alerts.AlertRule, hostname string, value float64
 // email template
 // ---------------------------------------------------------------------------
 
+type labelKV struct {
+	Key string
+	Val string
+}
+
 type emailData struct {
 	RuleName   string
 	Hostname   string
-	Metric     string
+	Expr       string
+	Labels     []labelKV
 	Value      float64
-	Condition  string
-	Threshold  float64
 	StateLabel string
 	Time       string
 	WebURL     string
@@ -85,36 +92,51 @@ const emailHTML = `
 <table border="0" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;">
   <tr><td style="font-weight:bold;color:#555;">规则</td><td>{{.RuleName}}</td></tr>
   <tr><td style="font-weight:bold;color:#555;">主机</td><td>{{.Hostname}}</td></tr>
-  <tr><td style="font-weight:bold;color:#555;">指标</td><td>{{.Metric}} = {{.Value}}</td></tr>
-  <tr><td style="font-weight:bold;color:#555;">条件</td><td>{{.Condition}} {{.Threshold}}</td></tr>
+  <tr><td style="font-weight:bold;color:#555;">表达式</td><td style="font-family:monospace;">{{.Expr}}</td></tr>
+  <tr><td style="font-weight:bold;color:#555;">实例</td><td>{{template "labels" .Labels}}</td></tr>
+  <tr><td style="font-weight:bold;color:#555;">值</td><td>{{.Value}}</td></tr>
   <tr><td style="font-weight:bold;color:#555;">状态</td><td>{{.StateLabel}}</td></tr>
   <tr><td style="font-weight:bold;color:#555;">时间</td><td>{{.Time}}</td></tr>
 </table>
 {{if .WebURL}}<p style="font-family:sans-serif;font-size:13px;color:#888;">请到 <a href="{{.WebURL}}">{{.WebURL}}</a> 确认此告警。</p>{{end}}
+{{define "labels"}}{{range .}}<div style="font-family:monospace;">{{.Key}}={{.Val}}</div>{{end}}{{end}}
 `
 
-func (s *Sender) renderBody(rule alerts.AlertRule, hostname string, value float64, state string) (string, error) {
+func (s *Sender) renderBody(rule alerts.AlertRule, hostname string, labels map[string]string, value float64, state string) (string, error) {
 	stateLabel := "告警中"
 	if state == "recovered" {
 		stateLabel = "已恢复"
 	}
-	condLabel := ">"
-	if rule.Condition == "lt" {
-		condLabel = "<"
+
+	keys := make([]string, 0, len(labels))
+	for k := range labels {
+		keys = append(keys, k)
 	}
+	sort.Strings(keys)
+	lvs := make([]labelKV, 0, len(keys))
+	for _, k := range keys {
+		lvs = append(lvs, labelKV{Key: k, Val: labels[k]})
+	}
+
 	var buf bytes.Buffer
 	err := tmpl.Execute(&buf, emailData{
 		RuleName:   rule.Name,
-		Hostname:   hostname,
-		Metric:     rule.Metric,
+		Hostname:   hostnameOrUnknown(hostname),
+		Expr:       rule.Expr,
+		Labels:     lvs,
 		Value:      value,
-		Condition:  condLabel,
-		Threshold:  rule.Threshold,
 		StateLabel: stateLabel,
 		Time:       time.Now().Format("2006-01-02 15:04:05"),
 		WebURL:     s.webURL,
 	})
 	return buf.String(), err
+}
+
+func hostnameOrUnknown(host string) string {
+	if host == "" {
+		return "(unknown)"
+	}
+	return host
 }
 
 func resolvePassword(pw string) string {

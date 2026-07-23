@@ -58,10 +58,7 @@ export interface AlertRule {
   id: number
   name: string
   enabled: boolean
-  metric: string
-  hostname: string
-  condition: 'gt' | 'lt'
-  threshold: number
+  expr: string
   duration: number
   description: string
   created_at: string
@@ -70,6 +67,8 @@ export interface AlertRule {
 }
 
 export interface AlertState {
+  fingerprint: string
+  labels: Record<string, string>
   hostname: string
   status: 'ok' | 'pending' | 'firing'
   acknowledged: boolean
@@ -81,7 +80,10 @@ export interface AlertHistoryItem {
   id: number
   rule_id: number
   rule_name: string
+  fingerprint: string
+  labels: Record<string, string>
   hostname: string
+  expr: string
   metric_value: number
   state: 'firing' | 'recovered'
   acknowledged: boolean
@@ -97,8 +99,20 @@ export interface AlertStatus {
 export interface AlertStatusItem {
   rule_id: number
   rule_name: string
+  fingerprint: string
   hostname: string
+  labels: Record<string, string>
   status: string
   acknowledged: boolean
   since: string
+}
+
+export interface AlertTestInstance {
+  fingerprint: string
+  labels: Record<string, string>
+  value: number
+}
+
+export interface AlertTestResponse {
+  result: AlertTestInstance[]
 }

@@ -1,20 +1,19 @@
 import { useState } from 'react'
 import { api, useAsync } from '../api/client'
-import type { AlertRule } from '../types'
+import type { AlertRule, AlertTestResponse } from '../types'
 
 interface RuleForm {
   name: string
-  metric: string
-  hostname: string
-  condition: 'gt' | 'lt'
-  threshold: number
+  expr: string
   duration: number
   description: string
 }
 
 const emptyForm: RuleForm = {
-  name: '', metric: '', hostname: '', condition: 'gt',
-  threshold: 90, duration: 60, description: '',
+  name: '',
+  expr: '',
+  duration: 60,
+  description: '',
 }
 
 export default function Alerts() {
@@ -22,12 +21,18 @@ export default function Alerts() {
   const [editing, setEditing] = useState<AlertRule | null>(null)
   const [form, setForm] = useState<RuleForm>(emptyForm)
   const [showModal, setShowModal] = useState(false)
-  const [ackRule, setAckRule] = useState<{id: number; hostname: string} | null>(null)
+  const [ackRule, setAckRule] = useState<{id: number; fingerprint: string; hostname: string} | null>(null)
   const [ackHours, setAckHours] = useState(0)
+
+  const [testResult, setTestResult] = useState<AlertTestResponse | null>(null)
+  const [testError, setTestError] = useState<string | null>(null)
+  const [testLoading, setTestLoading] = useState(false)
 
   const openCreate = () => {
     setEditing(null)
     setForm(emptyForm)
+    setTestResult(null)
+    setTestError(null)
     setShowModal(true)
   }
 
@@ -35,13 +40,12 @@ export default function Alerts() {
     setEditing(r)
     setForm({
       name: r.name,
-      metric: r.metric,
-      hostname: r.hostname,
-      condition: r.condition,
-      threshold: r.threshold,
+      expr: r.expr,
       duration: r.duration,
       description: r.description,
     })
+    setTestResult(null)
+    setTestError(null)
     setShowModal(true)
   }
 
@@ -68,9 +72,27 @@ export default function Alerts() {
 
   const handleAck = async () => {
     if (!ackRule) return
-    await api.acknowledgeAlert(ackRule.id, ackRule.hostname, ackHours)
+    await api.acknowledgeAlert(ackRule.id, ackRule.fingerprint, ackHours)
     setAckRule(null)
     refetch()
+  }
+
+  const handleTest = async () => {
+    setTestLoading(true)
+    setTestError(null)
+    setTestResult(null)
+    try {
+      const res = await api.testAlertExpr(form.expr)
+      setTestResult(res)
+    } catch (e) {
+      // `post` throws `Error("HTTP <code>: <body>")`. Try to surface the
+      // backend's `error` field if present.
+      const msg = e instanceof Error ? e.message : String(e)
+      const m = msg.match(/"error":"([^"]+)"/)
+      setTestError(m ? m[1] : msg)
+    } finally {
+      setTestLoading(false)
+    }
   }
 
   const statusBadge = (r: AlertRule) => {
@@ -97,9 +119,7 @@ export default function Alerts() {
         <thead>
           <tr>
             <th>名称</th>
-            <th>指标</th>
-            <th>条件</th>
-            <th>阈值</th>
+            <th>PromQL</th>
             <th>持续(s)</th>
             <th>状态</th>
             <th>启用</th>
@@ -110,9 +130,7 @@ export default function Alerts() {
           {rules.map(r => (
             <tr key={r.id}>
               <td>{r.name}</td>
-              <td style={{fontFamily:'monospace'}}>{r.metric}</td>
-              <td>{r.condition === 'gt' ? '>' : '<'}</td>
-              <td>{r.threshold}</td>
+              <td style={{fontFamily:'monospace', maxWidth:'40ch', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={r.expr}>{r.expr}</td>
               <td>{r.duration}</td>
               <td>{statusBadge(r)}</td>
               <td>
@@ -127,7 +145,7 @@ export default function Alerts() {
                 {r.states?.filter(s => s.status === 'firing' && !s.acknowledged).length > 0 && (
                   <button className="btn-sm btn-warning" onClick={() => {
                     const target = r.states?.find(s => s.status === 'firing' && !s.acknowledged)
-                    if (target) setAckRule({id: r.id, hostname: target.hostname})
+                    if (target) setAckRule({id: r.id, fingerprint: target.fingerprint, hostname: target.hostname})
                   }}>处理中</button>
                 )}
               </td>
@@ -143,22 +161,16 @@ export default function Alerts() {
             <h2>{editing ? '编辑规则' : '创建规则'}</h2>
             <div className="form-grid">
               <label>规则名称</label>
-              <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="CPU 过高告警" />
+              <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="HTTP 探测失败告警" />
 
-              <label>指标名</label>
-              <input value={form.metric} onChange={e => setForm({...form, metric: e.target.value})} placeholder="cpu_usage" className="mono" />
-
-              <label>主机名</label>
-              <input value={form.hostname} onChange={e => setForm({...form, hostname: e.target.value})} placeholder="留空=全部主机" />
-
-              <label>条件</label>
-              <select value={form.condition} onChange={e => setForm({...form, condition: e.target.value as 'gt' | 'lt'})}>
-                <option value="gt">大于 (&gt;)</option>
-                <option value="lt">小于 (&lt;)</option>
-              </select>
-
-              <label>阈值</label>
-              <input type="number" value={form.threshold} onChange={e => setForm({...form, threshold: +e.target.value})} />
+              <label>PromQL 表达式</label>
+              <textarea
+                value={form.expr}
+                onChange={e => setForm({...form, expr: e.target.value})}
+                placeholder={'success{probe_type="http",target="https://example.com"} == 0'}
+                className="mono"
+                rows={3}
+              />
 
               <label>持续秒数</label>
               <input type="number" value={form.duration} onChange={e => setForm({...form, duration: +e.target.value})} placeholder="0=立即" />
@@ -166,6 +178,35 @@ export default function Alerts() {
               <label>描述</label>
               <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={2} />
             </div>
+
+            <div className="modal-actions" style={{justifyContent:'flex-start', gap:'0.5rem'}}>
+              <button className="btn-sm" disabled={testLoading || !form.expr.trim()} onClick={handleTest}>
+                {testLoading ? '查询中…' : '测试查询'}
+              </button>
+            </div>
+
+            {testError && (
+              <div className="panel" style={{borderColor:'var(--bad)', color:'var(--bad)', padding:'0.5rem 0.75rem'}}>
+                {testError}
+              </div>
+            )}
+            {testResult && (
+              <div className="panel" style={{padding:'0.5rem 0.75rem', fontFamily:'monospace', fontSize:'12px'}}>
+                <div style={{fontWeight:'bold', marginBottom:'0.25rem'}}>匹配 {testResult.result.length} 个实例</div>
+                {testResult.result.length === 0 ? (
+                  <div style={{color:'var(--muted)'}}>无</div>
+                ) : testResult.result.map((it) => (
+                  <div key={it.fingerprint} style={{borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:'0.25rem', marginTop:'0.25rem'}}>
+                    <div>value = {it.value}</div>
+                    {Object.entries(it.labels).map(([k, v]) => (
+                      <div key={k} style={{color:'var(--muted)'}}>{k}={v}</div>
+                    ))}
+                    <div style={{color:'var(--muted)', fontSize:'10px'}}>fp={it.fingerprint.slice(0, 12)}…</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="modal-actions">
               <button className="btn" onClick={() => setShowModal(false)}>取消</button>
               <button className="btn btn-primary" onClick={handleSave}>保存</button>
@@ -179,7 +220,7 @@ export default function Alerts() {
         <div className="modal-overlay" onClick={() => setAckRule(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h2>标记处理中</h2>
-            <p>主机: <strong>{ackRule.hostname}</strong></p>
+            <p>主机: <strong>{ackRule.hostname || '(unknown)'}</strong></p>
             <div className="form-grid">
               <label>静默时长</label>
               <select value={ackHours} onChange={e => setAckHours(+e.target.value)}>

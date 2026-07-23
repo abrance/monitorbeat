@@ -10,12 +10,13 @@ import (
 func TestRenderBody(t *testing.T) {
 	s := New(Config{From: "a@b.com", To: []string{"c@d.com"}})
 	rule := alerts.AlertRule{
-		Name:      "CPU High",
-		Metric:    "cpu_usage",
-		Condition: "gt",
-		Threshold: 90,
+		Name: "CPU High",
+		Expr: "cpu_usage > 90",
 	}
-	body, err := s.renderBody(rule, "web-01", 95.5, "firing")
+	body, err := s.renderBody(rule, "web-01", map[string]string{
+		"hostname": "web-01",
+		"task_id":  "1004",
+	}, 95.5, "firing")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,17 +32,23 @@ func TestRenderBody(t *testing.T) {
 	if !strings.Contains(body, "告警中") {
 		t.Error("email body missing state label")
 	}
+	if !strings.Contains(body, "cpu_usage &gt; 90") {
+		t.Error("email body missing expr")
+	}
+	if !strings.Contains(body, "task_id=1004") {
+		t.Error("email body missing label")
+	}
 }
 
 func TestRenderBodyRecovered(t *testing.T) {
 	s := New(Config{From: "a@b.com", To: []string{"c@d.com"}})
 	rule := alerts.AlertRule{
-		Name:      "Memory Low",
-		Metric:    "mem_available_percent",
-		Condition: "lt",
-		Threshold: 10,
+		Name: "Memory Low",
+		Expr: "mem_available_percent < 10",
 	}
-	body, err := s.renderBody(rule, "db-01", 15.2, "recovered")
+	body, err := s.renderBody(rule, "db-01", map[string]string{
+		"hostname": "db-01",
+	}, 15.2, "recovered")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,8 +78,8 @@ func TestResolvePassword(t *testing.T) {
 
 func TestSendAlertNoopWhenNotConfigured(t *testing.T) {
 	s := New(Config{}) // empty host, no To
-	rule := alerts.AlertRule{Name: "test"}
-	err := s.SendAlert(rule, "h", 1, "firing")
+	rule := alerts.AlertRule{Name: "test", Expr: "x == 0"}
+	err := s.SendAlert(rule, "h", map[string]string{"hostname": "h"}, 1, "firing")
 	if err != nil {
 		t.Errorf("expected no error when SMTP not configured, got %v", err)
 	}

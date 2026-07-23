@@ -2,18 +2,18 @@ import { useState } from 'react'
 import { api, useAsync } from '../api/client'
 
 export default function AlertHistory() {
-  const [filterHost, setFilterHost] = useState('')
+  const [filterFp, setFilterFp] = useState('')
   const [filterState, setFilterState] = useState('')
   const [page, setPage] = useState(0)
   const limit = 20
 
   const { data: history, loading, error, refetch } = useAsync(
-    () => api.alertHistory({hostname: filterHost || undefined, state: filterState || undefined, limit, offset: page * limit}),
-    [filterHost, filterState, page],
+    () => api.alertHistory({fingerprint: filterFp || undefined, state: filterState || undefined, limit, offset: page * limit}),
+    [filterFp, filterState, page],
   )
 
-  const handleAck = async (ruleId: number, hostname: string) => {
-    await api.acknowledgeAlert(ruleId, hostname, 0)
+  const handleAck = async (ruleId: number, fingerprint: string) => {
+    await api.acknowledgeAlert(ruleId, fingerprint, 0)
     refetch()
   }
 
@@ -26,7 +26,7 @@ export default function AlertHistory() {
       </div>
 
       <div className="filter-row">
-        <input className="host-select" placeholder="主机名" value={filterHost} onChange={e => { setFilterHost(e.target.value); setPage(0) }} />
+        <input className="host-select" placeholder="实例 fingerprint" value={filterFp} onChange={e => { setFilterFp(e.target.value); setPage(0) }} />
         <select className="host-select" value={filterState} onChange={e => { setFilterState(e.target.value); setPage(0) }}>
           <option value="">全部状态</option>
           <option value="firing">告警中</option>
@@ -47,7 +47,7 @@ export default function AlertHistory() {
               <thead>
                 <tr>
                   <th>规则</th>
-                  <th>主机</th>
+                  <th>实例</th>
                   <th>值</th>
                   <th>状态</th>
                   <th>确认</th>
@@ -59,10 +59,15 @@ export default function AlertHistory() {
                 {history.items.map(h => (
                   <tr key={h.id}>
                     <td>{h.rule_name}</td>
-                    <td style={{fontFamily:'monospace'}}>{h.hostname}</td>
+                    <td style={{fontFamily:'monospace', fontSize:'12px'}}>
+                      {h.hostname && <div>{h.hostname}</div>}
+                      {Object.entries(h.labels).map(([k, v]) => (
+                        <div key={k} style={{color: k === 'hostname' ? 'var(--muted)' : 'inherit'}}>{k}={v}</div>
+                      ))}
+                    </td>
                     <td>{h.metric_value != null ? h.metric_value.toFixed(2) : '-'}</td>
                     <td>
-                      <span className={`badge ${h.state === 'firing' ? '' : ''}`}
+                      <span className="badge"
                         style={h.state === 'firing' ?
                           {background:'rgba(248,81,73,0.15)',color:'var(--bad)'} :
                           {background:'rgba(63,185,80,0.15)',color:'var(--ok)'}}>
@@ -73,7 +78,7 @@ export default function AlertHistory() {
                     <td style={{fontSize:'12px',color:'var(--muted)'}}>{new Date(h.triggered_at).toLocaleString()}</td>
                     <td>
                       {h.state === 'firing' && !h.acknowledged && (
-                        <button className="btn-sm btn-warning" onClick={() => handleAck(h.rule_id, h.hostname)}>处理中</button>
+                        <button className="btn-sm btn-warning" onClick={() => handleAck(h.rule_id, h.fingerprint)}>处理中</button>
                       )}
                     </td>
                   </tr>

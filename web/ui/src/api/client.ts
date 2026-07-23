@@ -10,6 +10,7 @@ import type {
   AlertRule,
   AlertHistoryItem,
   AlertStatus,
+  AlertTestResponse,
 } from '../types'
 
 const API = '/api/v1'
@@ -55,18 +56,20 @@ export const api = {
     put<AlertRule>(`/alerts/rules/${id}`, rule),
   deleteAlertRule: (id: number) =>
     del(`/alerts/rules/${id}`),
-  acknowledgeAlert: (ruleId: number, hostname: string, silenceHours = 0) =>
-    post<{status: string}>('/alerts/acknowledge', {rule_id: ruleId, hostname, silence_hours: silenceHours}),
-  alertHistory: (params?: {rule_id?: number; hostname?: string; state?: string; limit?: number; offset?: number}) => {
+  acknowledgeAlert: (ruleId: number, fingerprint: string, silenceHours = 0) =>
+    post<{status: string}>('/alerts/acknowledge', {rule_id: ruleId, fingerprint, silence_hours: silenceHours}),
+  alertHistory: (params?: {rule_id?: number; fingerprint?: string; state?: string; limit?: number; offset?: number}) => {
     const q = new URLSearchParams()
     if (params?.rule_id) q.set('rule_id', String(params.rule_id))
-    if (params?.hostname) q.set('hostname', params.hostname)
+    if (params?.fingerprint) q.set('fingerprint', params.fingerprint)
     if (params?.state) q.set('state', params.state)
     if (params?.limit) q.set('limit', String(params.limit))
     if (params?.offset) q.set('offset', String(params.offset))
     return get<{total: number; items: AlertHistoryItem[]}>('/alerts/history?' + q.toString())
   },
   alertStatus: () => get<AlertStatus>('/alerts/status'),
+  testAlertExpr: (expr: string) =>
+    post<AlertTestResponse>('/alerts/test-query', {expr}),
 }
 
 // HTTP helpers for POST/PUT/DELETE

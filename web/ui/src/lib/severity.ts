@@ -2,71 +2,56 @@ import type { AlertRule } from '../types'
 
 export type Severity = 'ok' | 'pending' | 'firing'
 
-// Threshold band: when the current value is within this absolute distance
-// from the threshold we treat it as 'pending'. We use an absolute window
-// rather than a percentage so small-unit metrics (e.g. load1, bytes)
-// don't stay perpetually yellow. 10% of threshold magnitude is a sane
-// default that scales naturally with the value space.
+// The alert subsystem is now PromQL-only. Overview/HostDetail's
+// CPU/Mem/Disk/Load1 cards used to color themselves by checking
+// `rule.metric` against the metric name and `rule.condition/threshold`
+// against the value. With PromQL rules there's no single metric name
+// to match against, so the legacy helpers collapse to "always ok".
+//
+// The index/lookup helpers are kept so existing call sites still type-
+// check and behave deterministically; they just always return undefined.
+
 function isPending(value: number, rule: AlertRule): boolean {
-  if (rule.threshold === 0) return false
-  const window = Math.max(Math.abs(rule.threshold) * 0.1, 1)
-  if (rule.condition === 'gt') {
-    return value > rule.threshold - window && value <= rule.threshold
-  }
-  return value < rule.threshold + window && value >= rule.threshold
+  // Legacy metric/condition/threshold are gone; nothing can be "near" a
+  // threshold from outside the evaluator.
+  void value
+  void rule
+  return false
 }
 
 function isFiring(value: number, rule: AlertRule): boolean {
-  if (rule.condition === 'gt') return value > rule.threshold
-  return value < rule.threshold
+  void value
+  void rule
+  return false
 }
 
-// Severity for a single metric+hostname pairing. Disabled or silence-acked
-// rules are ignored so we don't keep nagging after the user has acted.
-// `silence_until` is a RFC3339 string; we treat it as still silencing
-// when it's in the future.
 function isSilenced(rule: AlertRule): boolean {
   if (!rule.enabled) return true
-  // The states array carries per-host acknowledgement. We pull the
-  // matching host's state and check if it is currently silenced.
-  const state = rule.states?.find((s) => s.hostname === rule.hostname)
-  if (!state?.silence_until) return false
-  const until = Date.parse(state.silence_until)
-  return !isNaN(until) && until > Date.now()
+  // No metric→state index any more, so we conservatively say no.
+  return false
 }
 
 export function severityFor(value: number | undefined, rule: AlertRule | undefined): Severity {
-  if (value === undefined || value === null || !rule || isSilenced(rule)) return 'ok'
-  if (isFiring(value, rule)) return 'firing'
-  if (isPending(value, rule)) return 'pending'
+  void value
+  if (!rule || isSilenced(rule)) return 'ok'
+  if (isFiring(value ?? 0, rule)) return 'firing'
+  if (isPending(value ?? 0, rule)) return 'pending'
   return 'ok'
 }
 
 // Build a (metric,hostname) -> rule index for fast lookup on pages
-// with many StatCards. Rules with hostname === '' apply to all hosts.
-export function indexRulesByMetric(rules: AlertRule[]): Map<string, AlertRule[]> {
-  const m = new Map<string, AlertRule[]>()
-  for (const r of rules) {
-    const key = r.metric
-    const arr = m.get(key) ?? []
-    arr.push(r)
-    m.set(key, arr)
-  }
-  return m
+// with many StatCards. Returns an empty index under PromQL-only rules —
+// callers still receive a Map, but lookups always miss.
+export function indexRulesByMetric(_rules: AlertRule[]): Map<string, AlertRule[]> {
+  return new Map<string, AlertRule[]>()
 }
 
-// Resolve the applicable rule for a metric+hostname pair. Prefer a
-// hostname-specific rule; fall back to the global one (hostname === '').
+// Resolve the applicable rule for a metric+hostname pair. Always
+// undefined now that rules don't expose a metric name.
 export function ruleFor(
-  index: Map<string, AlertRule[]>,
-  metric: string,
-  hostname: string,
+  _index: Map<string, AlertRule[]>,
+  _metric: string,
+  _hostname: string,
 ): AlertRule | undefined {
-  const candidates = index.get(metric)
-  if (!candidates) return undefined
-  return (
-    candidates.find((r) => r.hostname === hostname) ??
-    candidates.find((r) => r.hostname === '') ??
-    undefined
-  )
+  return undefined
 }

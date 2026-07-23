@@ -33,7 +33,7 @@ type Server struct {
 // mux 由调用方提供（允许外部追加路由，如 registry）。
 func NewServer(cfg *config.WebConfig, client *vm.Client, store *alerts.Store, mux *http.ServeMux) http.Handler {
 	s := &Server{cfg: cfg, vm: client, store: store}
-	ah := &alertHandler{store: store}
+	ah := &alertHandler{store: store, vm: client}
 
 	mux.HandleFunc("/api/v1/healthz", s.handleHealthz)
 	mux.HandleFunc("/api/v1/hosts", s.handleHosts)
@@ -72,6 +72,7 @@ func NewServer(cfg *config.WebConfig, client *vm.Client, store *alerts.Store, mu
 	mux.HandleFunc("/api/v1/alerts/acknowledge", ah.acknowledge)
 	mux.HandleFunc("/api/v1/alerts/history", ah.listHistory)
 	mux.HandleFunc("/api/v1/alerts/status", ah.status)
+	mux.HandleFunc("/api/v1/alerts/test-query", ah.testQuery)
 
 	mux.Handle("/", http.FileServer(http.Dir(cfg.UIDir)))
 	return recovery(mux)
